@@ -15,7 +15,7 @@ class TicketStorage:
     async def get_draft(self, chat_id: int) -> TicketDraft | None:
         cursor = await self._db.execute(
             """
-            SELECT topic, description, contact
+            SELECT topic, description, contact, urgency
             FROM ticket_sessions
             WHERE chat_id = ?
             """,
@@ -25,7 +25,7 @@ class TicketStorage:
         await cursor.close()
         if row is None:
             return None
-        return TicketDraft(topic=row[0], description=row[1], contact=row[2])
+        return TicketDraft(topic=row[0], description=row[1], contact=row[2], urgency=row[3])
 
     async def save_draft(self, chat_id: int, draft: TicketDraft) -> None:
         session = await self.get_session(chat_id)
@@ -41,7 +41,7 @@ class TicketStorage:
     async def get_session(self, chat_id: int) -> TicketSession | None:
         cursor = await self._db.execute(
             """
-            SELECT chat_id, state, topic, description, contact
+            SELECT chat_id, state, topic, description, contact, urgency
             FROM ticket_sessions
             WHERE chat_id = ?
             """,
@@ -55,20 +55,21 @@ class TicketStorage:
         return TicketSession(
             chat_id=row[0],
             state=TicketState(row[1]),
-            draft=TicketDraft(topic=row[2], description=row[3], contact=row[4]),
+            draft=TicketDraft(topic=row[2], description=row[3], contact=row[4], urgency=row[5]),
         )
 
     async def save_session(self, session: TicketSession) -> None:
         await self._db.execute(
             """
             INSERT INTO ticket_sessions (
-                chat_id, state, topic, description, contact, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?)
+                chat_id, state, topic, description, contact, urgency, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(chat_id) DO UPDATE SET
                 state = excluded.state,
                 topic = excluded.topic,
                 description = excluded.description,
                 contact = excluded.contact,
+                urgency = excluded.urgency,
                 updated_at = excluded.updated_at
             """,
             (
@@ -77,6 +78,7 @@ class TicketStorage:
                 session.draft.topic,
                 session.draft.description,
                 session.draft.contact,
+                session.draft.urgency,
                 datetime.now(UTC).isoformat(),
             ),
         )

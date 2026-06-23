@@ -11,8 +11,14 @@ MENU_OTHER = "menu:other"
 MENU_MAIN = "menu:main"
 
 TICKET_TOPIC_SUPPORT = "ticket:topic:support"
-TICKET_TOPIC_CONSULT = "ticket:topic:consult"
+TICKET_TOPIC_WEBSITE = "ticket:topic:website"
+TICKET_TOPIC_ADS = "ticket:topic:ads"
 TICKET_TOPIC_OTHER = "ticket:topic:other"
+
+TICKET_URGENCY_NORMAL = "ticket:urgency:normal"
+TICKET_URGENCY_URGENT = "ticket:urgency:urgent"
+TICKET_URGENCY_VERY_URGENT = "ticket:urgency:very_urgent"
+
 TICKET_CONFIRM_SEND = "ticket:confirm:send"
 TICKET_CONFIRM_CANCEL = "ticket:confirm:cancel"
 
@@ -25,13 +31,24 @@ MENU_LABELS = {
 
 TICKET_TOPIC_LABELS = {
     TICKET_TOPIC_SUPPORT: "Техподдержка",
-    TICKET_TOPIC_CONSULT: "Консультация",
+    TICKET_TOPIC_WEBSITE: "Разработка сайта",
+    TICKET_TOPIC_ADS: "Контекстная реклама",
     TICKET_TOPIC_OTHER: "Другое",
+}
+
+TICKET_URGENCY_LABELS = {
+    TICKET_URGENCY_NORMAL: "Обычная",
+    TICKET_URGENCY_URGENT: "Срочно",
+    TICKET_URGENCY_VERY_URGENT: "Очень срочно",
 }
 
 
 def callback_button(text: str, payload: str) -> dict[str, str]:
     return {"type": "callback", "text": text, "payload": payload}
+
+
+def _cancel_row() -> list[dict[str, str]]:
+    return [callback_button("Отменить", TICKET_CONFIRM_CANCEL)]
 
 
 def get_main_menu() -> dict[str, Any]:
@@ -53,9 +70,40 @@ def get_ticket_topic_keyboard() -> dict[str, Any]:
         "type": "inline_keyboard",
         "payload": {
             "buttons": [
-                [callback_button("Техподдержка", TICKET_TOPIC_SUPPORT)],
-                [callback_button("Консультация", TICKET_TOPIC_CONSULT)],
-                [callback_button("Другое", TICKET_TOPIC_OTHER)],
+                [
+                    callback_button("Техподдержка", TICKET_TOPIC_SUPPORT),
+                    callback_button("Разработка сайта", TICKET_TOPIC_WEBSITE),
+                ],
+                [
+                    callback_button("Контекстная реклама", TICKET_TOPIC_ADS),
+                    callback_button("Другое", TICKET_TOPIC_OTHER),
+                ],
+                _cancel_row(),
+            ],
+        },
+    }
+
+
+def get_ticket_nav_keyboard() -> dict[str, Any]:
+    return {
+        "type": "inline_keyboard",
+        "payload": {
+            "buttons": [_cancel_row()],
+        },
+    }
+
+
+def get_ticket_urgency_keyboard() -> dict[str, Any]:
+    return {
+        "type": "inline_keyboard",
+        "payload": {
+            "buttons": [
+                [
+                    callback_button("Обычная", TICKET_URGENCY_NORMAL),
+                    callback_button("Срочно", TICKET_URGENCY_URGENT),
+                ],
+                [callback_button("Очень срочно", TICKET_URGENCY_VERY_URGENT)],
+                _cancel_row(),
             ],
         },
     }

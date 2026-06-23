@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from app.bot.faq import FAQ_ANSWERS, FAQ_PAYLOADS
@@ -14,13 +15,27 @@ from app.bot.keyboards import (
     TICKET_CONFIRM_CANCEL,
     TICKET_CONFIRM_SEND,
     TICKET_TOPIC_LABELS,
+    TICKET_URGENCY_LABELS,
     get_faq_back_keyboard,
     get_faq_keyboard,
     get_main_menu,
     get_ticket_confirm_keyboard,
+    get_ticket_nav_keyboard,
     get_ticket_topic_keyboard,
+    get_ticket_urgency_keyboard,
 )
 from app.bot.states import TicketState
+from app.bot.texts import (
+    TICKET_CANCELLED_TEXT,
+    TICKET_CONTACT_INVALID_TEXT,
+    TICKET_CONTACT_TEXT,
+    TICKET_DESCRIPTION_TEXT,
+    TICKET_INVALID_INPUT_TEXT,
+    TICKET_SUBMITTED_SUCCESS_TEXT,
+    TICKET_TOPIC_TEXT,
+    TICKET_URGENCY_TEXT,
+    WELCOME_TEXT,
+)
 from app.config import settings
 from app.max_api.client import MaxApiClient
 from app.max_api.exceptions import MaxApiError
@@ -29,26 +44,27 @@ from app.tickets.models import TicketDraft, TicketSession
 from app.tickets.service import format_admin_message, format_summary
 from app.tickets.storage import TicketStorage
 
-MAIN_MENU_TEXT = "Выберите раздел:"
+MAIN_MENU_TEXT = WELCOME_TEXT
 FAQ_MENU_TEXT = "Выберите вопрос:"
 RECEIVED_TEXT = "Получил сообщение"
 START_COMMAND = "/start"
 
-TICKET_TOPIC_PROMPT = "Выберите тему обращения:"
-TICKET_DESCRIPTION_PROMPT = "Опишите проблему или задачу одним сообщением:"
-TICKET_CONTACT_PROMPT = "Укажите контакт для связи (телефон, email или @username):"
-TICKET_CANCELLED_TEXT = "Заявка отменена."
-TICKET_SENT_TEXT = "Спасибо! Заявка отправлена. Мы свяжемся с вами в ближайшее время."
 TICKET_ADMIN_NOT_CONFIGURED_TEXT = (
     "Сейчас не удалось отправить заявку: админ-канал не настроен. Попробуйте позже."
 )
-TICKET_ADMIN_SEND_FAILED_TEXT = "Не удалось отправить заявку. Попробуйте позже или напишите напрямую."
+TICKET_ADMIN_SEND_FAILED_TEXT = (
+    "Не удалось отправить заявку. Попробуйте позже или напишите напрямую."
+)
 
 TICKET_CALLBACK_PAYLOADS = {
     *TICKET_TOPIC_LABELS,
+    *TICKET_URGENCY_LABELS,
     TICKET_CONFIRM_SEND,
     TICKET_CONFIRM_CANCEL,
 }
+
+_EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+_PHONE_RE = re.compile(r"^\+?[\d\s\-()]{7,20}$")
 
 
 def extract_chat_id(update: dict[str, Any]) -> int | None:
@@ -103,6 +119,16 @@ def extract_callback_payload(update: dict[str, Any]) -> str | None:
         return payload.strip()
 
     return None
+
+
+def is_valid_contact(value: str) -> bool:
+    normalized = value.strip()
+    if not normalized:
+        return False
+    if _EMAIL_RE.match(normalized):
+        return True
+    digits = re.sub(r"\D", "", normalized)
+    return len(digits) >= 10 and _PHONE_RE.match(normalized) is not None
 
 
 class BotRouter:
@@ -196,7 +222,7 @@ class BotRouter:
         if await self.storage.has_active_ticket_flow(chat_id):
             await self._send_message(
                 chat_id,
-                "Пожалуйста, завершите текущую заявку или нажмите «Отменить».",
+                TICKET_INVALID_INPUT_TEXT,
             )
             return
 
@@ -215,7 +241,7 @@ class BotRouter:
         session = TicketSession(chat_id=chat_id, state=TicketState.TICKET_TOPIC, draft=TicketDraft())
         await self.storage.save_session(session)
         self.logger.info("Старт сценария заявки: chat_id=%s", chat_id)
-        await self._send_message(chat_id, TICKET_TOPIC_PROMPT, reply_markup=get_ticket_topic_keyboard())
+        await self._send_message(chat_id, TICKET_TOPIC_TEXT, reply_markup=get_ticket_topic_keyboard())
 
     async def _handle_ticket_callback(self, chat_id: int, payload: str) -> None:
         session = await self.storage.get_session(chat_id)
@@ -225,13 +251,32 @@ class BotRouter:
 
         if payload in TICKET_TOPIC_LABELS:
             if session.state != TicketState.TICKET_TOPIC:
-                await self._send_message(chat_id, "Сейчас ожидается другой шаг заявки.")
+                await self._send_message(chat_id, TICKET_INVALID_INPUT_TEXT)
                 return
 
             session.draft.topic = TICKET_TOPIC_LABELS[payload]
             session.state = TicketState.TICKET_DESCRIPTION
             await self.storage.save_session(session)
-            await self._send_message(chat_id, TICKET_DESCRIPTION_PROMPT)
+            await self._send_message(
+                chat_id,
+                TICKET_DESCRIPTION_TEXT,
+                reply_markup=get_ticket_nav_keyboard(),
+            )
+            return
+
+        if payload in TICKET_URGENCY_LABELS:
+            if session.state != TicketState.TICKET_URGENCY:
+                await self._send_message(chat_id, TICKET_INVALID_INPUT_TEXT)
+                return
+
+            session.draft.urgency = TICKET_URGENCY_LABELS[payload]
+            session.state = TicketState.TICKET_CONFIRM
+            await self.storage.save_session(session)
+            await self._send_message(
+                chat_id,
+                format_summary(session.draft),
+                reply_markup=get_ticket_confirm_keyboard(),
+            )
             return
 
         if payload == TICKET_CONFIRM_SEND:
@@ -257,7 +302,7 @@ class BotRouter:
         if session.state == TicketState.TICKET_TOPIC:
             await self._send_message(
                 chat_id,
-                "Выберите тему с помощью кнопок ниже.",
+                TICKET_INVALID_INPUT_TEXT,
                 reply_markup=get_ticket_topic_keyboard(),
             )
             return
@@ -266,24 +311,44 @@ class BotRouter:
             session.draft.description = text
             session.state = TicketState.TICKET_CONTACT
             await self.storage.save_session(session)
-            await self._send_message(chat_id, TICKET_CONTACT_PROMPT)
+            await self._send_message(
+                chat_id,
+                TICKET_CONTACT_TEXT,
+                reply_markup=get_ticket_nav_keyboard(),
+            )
             return
 
         if session.state == TicketState.TICKET_CONTACT:
-            session.draft.contact = text
-            session.state = TicketState.TICKET_CONFIRM
+            if not is_valid_contact(text):
+                await self._send_message(
+                    chat_id,
+                    TICKET_CONTACT_INVALID_TEXT,
+                    reply_markup=get_ticket_nav_keyboard(),
+                )
+                return
+
+            session.draft.contact = text.strip()
+            session.state = TicketState.TICKET_URGENCY
             await self.storage.save_session(session)
             await self._send_message(
                 chat_id,
-                format_summary(session.draft),
-                reply_markup=get_ticket_confirm_keyboard(),
+                TICKET_URGENCY_TEXT,
+                reply_markup=get_ticket_urgency_keyboard(),
+            )
+            return
+
+        if session.state == TicketState.TICKET_URGENCY:
+            await self._send_message(
+                chat_id,
+                TICKET_INVALID_INPUT_TEXT,
+                reply_markup=get_ticket_urgency_keyboard(),
             )
             return
 
         if session.state == TicketState.TICKET_CONFIRM:
             await self._send_message(
                 chat_id,
-                "Используйте кнопки «Отправить» или «Отменить».",
+                TICKET_INVALID_INPUT_TEXT,
                 reply_markup=get_ticket_confirm_keyboard(),
             )
             return
@@ -306,9 +371,14 @@ class BotRouter:
             await self._send_message(chat_id, TICKET_ADMIN_SEND_FAILED_TEXT)
             return
 
-        self.logger.info("Заявка отправлена: chat_id=%s, topic=%s", chat_id, session.draft.topic)
+        self.logger.info(
+            "Заявка отправлена: chat_id=%s, topic=%s, urgency=%s",
+            chat_id,
+            session.draft.topic,
+            session.draft.urgency,
+        )
         await self.storage.delete_session(chat_id)
-        await self._send_message(chat_id, TICKET_SENT_TEXT)
+        await self._send_message(chat_id, TICKET_SUBMITTED_SUCCESS_TEXT)
         await self._send_main_menu(chat_id)
 
     async def _cancel_ticket(self, chat_id: int) -> None:

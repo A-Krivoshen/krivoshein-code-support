@@ -9,6 +9,7 @@ class TicketDraft(BaseModel):
     topic: str = ""
     description: str = ""
     contact: str = ""
+    urgency: str = ""
 
 
 class TicketSession(BaseModel):
