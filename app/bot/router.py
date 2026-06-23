@@ -13,13 +13,16 @@ from app.bot.keyboards import (
     MENU_MAIN,
     MENU_OTHER,
     MENU_TICKET,
+    OTHER_TASK,
     TICKET_CONFIRM_CANCEL,
     TICKET_CONFIRM_SEND,
     TICKET_TOPIC_LABELS,
+    TICKET_TOPIC_OTHER,
     TICKET_URGENCY_LABELS,
     get_faq_back_keyboard,
     get_faq_keyboard,
     get_main_menu,
+    get_other_menu_keyboard,
     get_ticket_confirm_keyboard,
     get_ticket_nav_keyboard,
     get_ticket_topic_keyboard,
@@ -33,6 +36,8 @@ from app.bot.texts import (
     TICKET_DESCRIPTION_TEXT,
     TICKET_INVALID_INPUT_TEXT,
     TICKET_SUBMITTED_SUCCESS_TEXT,
+    OTHER_MENU_TEXT,
+    OTHER_TASK_TEXT,
     TICKET_TOPIC_TEXT,
     TICKET_URGENCY_TEXT,
     WELCOME_TEXT,
@@ -211,6 +216,14 @@ class BotRouter:
             await self._handle_ticket_callback(chat_id, payload)
             return
 
+        if payload == MENU_OTHER:
+            await self._show_other_menu(chat_id)
+            return
+
+        if payload == OTHER_TASK:
+            await self._start_other_task_flow(chat_id)
+            return
+
         if payload == MENU_FAQ:
             await self._show_faq_menu(chat_id)
             return
@@ -236,7 +249,7 @@ class BotRouter:
 
         if payload and payload in MENU_LABELS:
             section = MENU_LABELS[payload]
-            if payload in {MENU_DOCS, MENU_OTHER}:
+            if payload == MENU_DOCS:
                 reply = f'Раздел «{section}» скоро будет доступен.'
             else:
                 reply = "Эта кнопка пока не настроена."
@@ -250,6 +263,23 @@ class BotRouter:
         await self.storage.save_session(session)
         self.logger.info("Старт сценария заявки: chat_id=%s", chat_id)
         await self._send_message(chat_id, TICKET_TOPIC_TEXT, reply_markup=get_ticket_topic_keyboard())
+
+    async def _start_other_task_flow(self, chat_id: int) -> None:
+        session = TicketSession(
+            chat_id=chat_id,
+            state=TicketState.TICKET_DESCRIPTION,
+            draft=TicketDraft(topic=TICKET_TOPIC_LABELS[TICKET_TOPIC_OTHER]),
+        )
+        await self.storage.save_session(session)
+        self.logger.info("Старт заявки «Другая задача»: chat_id=%s", chat_id)
+        await self._send_message(
+            chat_id,
+            OTHER_TASK_TEXT,
+            reply_markup=get_ticket_nav_keyboard(),
+        )
+
+    async def _show_other_menu(self, chat_id: int) -> None:
+        await self._send_message(chat_id, OTHER_MENU_TEXT, reply_markup=get_other_menu_keyboard())
 
     async def _handle_ticket_callback(self, chat_id: int, payload: str) -> None:
         session = await self.storage.get_session(chat_id)

@@ -21,7 +21,11 @@ MENU_FAQ = "menu:faq"
 MENU_FAQ_BACK = "menu:faq_back"
 MENU_DOCS = "menu:docs"
 MENU_OTHER = "menu:other"
+OTHER_TASK = "menu:other_task"
 MENU_MAIN = "menu:main"
+
+SITE_URL = "https://krivoshein.site/"
+CONTACT_URL = "https://krivoshein.site/contacts/"
 
 TICKET_TOPIC_SUPPORT = "ticket:topic:support"
 TICKET_TOPIC_WEBSITE = "ticket:topic:website"
@@ -60,8 +64,26 @@ def callback_button(text: str, payload: str) -> dict[str, str]:
     return {"type": "callback", "text": text, "payload": payload}
 
 
+def link_button(text: str, url: str) -> dict[str, str]:
+    return {"type": "link", "text": text, "url": url}
+
+
 def _cancel_row() -> list[dict[str, str]]:
     return [callback_button("Отменить", TICKET_CONFIRM_CANCEL)]
+
+
+def get_other_menu_keyboard() -> dict[str, Any]:
+    return {
+        "type": "inline_keyboard",
+        "payload": {
+            "buttons": [
+                [link_button("Быстрый контакт", CONTACT_URL)],
+                [link_button("Перейти на сайт", SITE_URL)],
+                [callback_button("Другая задача", OTHER_TASK)],
+                [callback_button("Назад в меню", MENU_MAIN)],
+            ],
+        },
+    }
 
 
 def get_main_menu() -> dict[str, Any]:
