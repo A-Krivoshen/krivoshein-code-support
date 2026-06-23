@@ -3,15 +3,19 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from app.bot.faq import FAQ_ANSWERS, FAQ_PAYLOADS
 from app.bot.keyboards import (
     MENU_DOCS,
     MENU_FAQ,
     MENU_LABELS,
+    MENU_MAIN,
     MENU_OTHER,
     MENU_TICKET,
     TICKET_CONFIRM_CANCEL,
     TICKET_CONFIRM_SEND,
     TICKET_TOPIC_LABELS,
+    get_faq_back_keyboard,
+    get_faq_keyboard,
     get_main_menu,
     get_ticket_confirm_keyboard,
     get_ticket_topic_keyboard,
@@ -26,6 +30,7 @@ from app.tickets.service import format_admin_message, format_summary
 from app.tickets.storage import TicketStorage
 
 MAIN_MENU_TEXT = "Выберите раздел:"
+FAQ_MENU_TEXT = "Выберите вопрос:"
 RECEIVED_TEXT = "Получил сообщение"
 START_COMMAND = "/start"
 
@@ -176,6 +181,18 @@ class BotRouter:
             await self._handle_ticket_callback(chat_id, payload)
             return
 
+        if payload == MENU_FAQ:
+            await self._show_faq_menu(chat_id)
+            return
+
+        if payload in FAQ_PAYLOADS:
+            await self._handle_faq_answer(chat_id, payload)
+            return
+
+        if payload == MENU_MAIN:
+            await self._send_main_menu(chat_id)
+            return
+
         if await self.storage.has_active_ticket_flow(chat_id):
             await self._send_message(
                 chat_id,
@@ -185,7 +202,7 @@ class BotRouter:
 
         if payload and payload in MENU_LABELS:
             section = MENU_LABELS[payload]
-            if payload in {MENU_FAQ, MENU_DOCS, MENU_OTHER}:
+            if payload in {MENU_DOCS, MENU_OTHER}:
                 reply = f'Раздел «{section}» скоро будет доступен.'
             else:
                 reply = "Эта кнопка пока не настроена."
@@ -298,6 +315,18 @@ class BotRouter:
         await self.storage.delete_session(chat_id)
         await self._send_message(chat_id, TICKET_CANCELLED_TEXT)
         await self._send_main_menu(chat_id)
+
+    async def _show_faq_menu(self, chat_id: int) -> None:
+        await self._send_message(chat_id, FAQ_MENU_TEXT, reply_markup=get_faq_keyboard())
+
+    async def _handle_faq_answer(self, chat_id: int, payload: str) -> None:
+        question, answer = FAQ_ANSWERS[payload]
+        self.logger.info("FAQ вопрос от chat_id=%s: %s", chat_id, question)
+        await self._send_message(
+            chat_id,
+            f"{question}\n\n{answer}",
+            reply_markup=get_faq_back_keyboard(),
+        )
 
     async def _send_main_menu(self, chat_id: int) -> None:
         await self._send_message(chat_id, MAIN_MENU_TEXT, reply_markup=get_main_menu())
