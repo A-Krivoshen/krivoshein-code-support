@@ -23,7 +23,7 @@ from app.max_api.exceptions import MaxApiError
 from app.max_api.types import ReplyMarkup
 from app.tickets.models import TicketDraft, TicketSession
 from app.tickets.service import format_admin_message, format_summary
-from app.tickets.storage import InMemoryTicketStorage
+from app.tickets.storage import TicketStorage
 
 MAIN_MENU_TEXT = "Выберите раздел:"
 RECEIVED_TEXT = "Получил сообщение"
@@ -101,13 +101,9 @@ def extract_callback_payload(update: dict[str, Any]) -> str | None:
 
 
 class BotRouter:
-    def __init__(
-        self,
-        client: MaxApiClient,
-        storage: InMemoryTicketStorage | None = None,
-    ) -> None:
+    def __init__(self, client: MaxApiClient, storage: TicketStorage) -> None:
         self.client = client
-        self.storage = storage or InMemoryTicketStorage()
+        self.storage = storage
         self.logger = logging.getLogger(__name__)
 
     async def handle_update(self, update: dict[str, Any]) -> None:
@@ -134,7 +130,7 @@ class BotRouter:
             self.logger.warning("bot_started без chat_id, меню не отправлено")
             return
 
-        self.storage.clear_session(chat_id)
+        await self.storage.delete_session(chat_id)
         self.logger.info("Пользователь запустил бота: chat_id=%s", chat_id)
         await self._send_main_menu(chat_id)
 
@@ -146,11 +142,11 @@ class BotRouter:
         text = extract_message_text(update)
         if text and text.lower() == START_COMMAND:
             self.logger.info("Команда /start от chat_id=%s", chat_id)
-            self.storage.clear_session(chat_id)
+            await self.storage.delete_session(chat_id)
             await self._send_main_menu(chat_id)
             return
 
-        if self.storage.has_active_ticket_flow(chat_id):
+        if await self.storage.has_active_ticket_flow(chat_id):
             await self._handle_ticket_text(chat_id, text)
             return
 
@@ -180,7 +176,7 @@ class BotRouter:
             await self._handle_ticket_callback(chat_id, payload)
             return
 
-        if self.storage.has_active_ticket_flow(chat_id):
+        if await self.storage.has_active_ticket_flow(chat_id):
             await self._send_message(
                 chat_id,
                 "Пожалуйста, завершите текущую заявку или нажмите «Отменить».",
@@ -200,12 +196,12 @@ class BotRouter:
 
     async def _start_ticket_flow(self, chat_id: int) -> None:
         session = TicketSession(chat_id=chat_id, state=TicketState.TICKET_TOPIC, draft=TicketDraft())
-        self.storage.set_session(session)
+        await self.storage.save_session(session)
         self.logger.info("Старт сценария заявки: chat_id=%s", chat_id)
         await self._send_message(chat_id, TICKET_TOPIC_PROMPT, reply_markup=get_ticket_topic_keyboard())
 
     async def _handle_ticket_callback(self, chat_id: int, payload: str) -> None:
-        session = self.storage.get_session(chat_id)
+        session = await self.storage.get_session(chat_id)
         if session is None or session.state == TicketState.IDLE:
             await self._send_message(chat_id, "Сначала начните подачу заявки через главное меню.")
             return
@@ -217,7 +213,7 @@ class BotRouter:
 
             session.draft.topic = TICKET_TOPIC_LABELS[payload]
             session.state = TicketState.TICKET_DESCRIPTION
-            self.storage.set_session(session)
+            await self.storage.save_session(session)
             await self._send_message(chat_id, TICKET_DESCRIPTION_PROMPT)
             return
 
@@ -233,7 +229,7 @@ class BotRouter:
             return
 
     async def _handle_ticket_text(self, chat_id: int, text: str | None) -> None:
-        session = self.storage.get_session(chat_id)
+        session = await self.storage.get_session(chat_id)
         if session is None:
             return
 
@@ -252,14 +248,14 @@ class BotRouter:
         if session.state == TicketState.TICKET_DESCRIPTION:
             session.draft.description = text
             session.state = TicketState.TICKET_CONTACT
-            self.storage.set_session(session)
+            await self.storage.save_session(session)
             await self._send_message(chat_id, TICKET_CONTACT_PROMPT)
             return
 
         if session.state == TicketState.TICKET_CONTACT:
             session.draft.contact = text
             session.state = TicketState.TICKET_CONFIRM
-            self.storage.set_session(session)
+            await self.storage.save_session(session)
             await self._send_message(
                 chat_id,
                 format_summary(session.draft),
@@ -294,12 +290,12 @@ class BotRouter:
             return
 
         self.logger.info("Заявка отправлена: chat_id=%s, topic=%s", chat_id, session.draft.topic)
-        self.storage.clear_session(chat_id)
+        await self.storage.delete_session(chat_id)
         await self._send_message(chat_id, TICKET_SENT_TEXT)
         await self._send_main_menu(chat_id)
 
     async def _cancel_ticket(self, chat_id: int) -> None:
-        self.storage.clear_session(chat_id)
+        await self.storage.delete_session(chat_id)
         await self._send_message(chat_id, TICKET_CANCELLED_TEXT)
         await self._send_main_menu(chat_id)
 

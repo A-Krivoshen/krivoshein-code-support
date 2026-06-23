@@ -9,9 +9,11 @@ from fastapi import FastAPI, HTTPException, Request
 
 from app.bot.router import BotRouter
 from app.config import settings
+from app.db import connect_db, init_db
 from app.logging_config import setup_logging
 from app.max_api import MaxApiClient
 from app.max_api.exceptions import MaxApiError
+from app.tickets.storage import TicketStorage
 
 logger = logging.getLogger(__name__)
 
@@ -20,18 +22,23 @@ logger = logging.getLogger(__name__)
 async def lifespan(application: FastAPI):
     setup_logging(settings.log_level)
     client = MaxApiClient(settings.max_bot_token)
+    db = await connect_db(settings.database_path)
     try:
+        await init_db(db)
         bot = await client.get_me()
         logger.info("Бот подключён: %s (user_id=%s)", bot.name, bot.user_id)
     except MaxApiError as exc:
         await client.aclose()
+        await db.close()
         logger.error("Не удалось проверить MAX API при старте: %s", exc)
         raise RuntimeError("MAX API token check failed") from exc
 
+    application.state.db = db
     application.state.max_client = client
-    application.state.router = BotRouter(client)
+    application.state.router = BotRouter(client, TicketStorage(db))
     yield
     await client.aclose()
+    await db.close()
 
 
 def create_app() -> FastAPI:
