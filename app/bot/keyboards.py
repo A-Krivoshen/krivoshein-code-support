@@ -4,6 +4,7 @@ from typing import Any
 
 from app.bot.faq import (
     FAQ_BOTS,
+    FAQ_CONSULTATION,
     FAQ_DIAGNOSTICS,
     FAQ_DIRECT,
     FAQ_PRICE,
@@ -129,6 +130,7 @@ def get_faq_keyboard() -> dict[str, Any]:
                 [callback_button("Сколько стоит сайт?", FAQ_PRICE)],
                 [callback_button("Сроки разработки", FAQ_TIMELINE)],
                 [callback_button("Диагностика сайта", FAQ_DIAGNOSTICS)],
+                [callback_button("Консультация", FAQ_CONSULTATION)],
                 [callback_button("Доработки существующего сайта", FAQ_REWORK)],
                 [callback_button("Техподдержка", FAQ_SUPPORT)],
                 [callback_button("Настройка VPS / сервера", FAQ_VPS)],
