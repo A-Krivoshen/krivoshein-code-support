@@ -2,10 +2,22 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.bot.faq import FAQ_PRICE, FAQ_REQUEST, FAQ_SUPPORT, FAQ_TIMELINE
+from app.bot.faq import (
+    FAQ_BOTS,
+    FAQ_DIAGNOSTICS,
+    FAQ_DIRECT,
+    FAQ_PRICE,
+    FAQ_PRIVACY,
+    FAQ_REQUEST,
+    FAQ_REWORK,
+    FAQ_SUPPORT,
+    FAQ_TIMELINE,
+    FAQ_VPS,
+)
 
 MENU_TICKET = "menu:ticket"
 MENU_FAQ = "menu:faq"
+MENU_FAQ_BACK = "menu:faq_back"
 MENU_DOCS = "menu:docs"
 MENU_OTHER = "menu:other"
 MENU_MAIN = "menu:main"
@@ -116,7 +128,13 @@ def get_faq_keyboard() -> dict[str, Any]:
             "buttons": [
                 [callback_button("Сколько стоит сайт?", FAQ_PRICE)],
                 [callback_button("Сроки разработки", FAQ_TIMELINE)],
+                [callback_button("Диагностика сайта", FAQ_DIAGNOSTICS)],
+                [callback_button("Доработки существующего сайта", FAQ_REWORK)],
                 [callback_button("Техподдержка", FAQ_SUPPORT)],
+                [callback_button("Настройка VPS / сервера", FAQ_VPS)],
+                [callback_button("Разработка ботов", FAQ_BOTS)],
+                [callback_button("Яндекс Директ", FAQ_DIRECT)],
+                [callback_button("Формы, cookies, персональные данные", FAQ_PRIVACY)],
                 [callback_button("Как подать заявку?", FAQ_REQUEST)],
                 [callback_button("Назад в меню", MENU_MAIN)],
             ],
@@ -129,6 +147,7 @@ def get_faq_back_keyboard() -> dict[str, Any]:
         "type": "inline_keyboard",
         "payload": {
             "buttons": [
+                [callback_button("К списку вопросов", MENU_FAQ_BACK)],
                 [callback_button("Назад в главное меню", MENU_MAIN)],
             ],
         },

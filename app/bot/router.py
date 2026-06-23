@@ -8,6 +8,7 @@ from app.bot.faq import FAQ_ANSWERS, FAQ_PAYLOADS
 from app.bot.keyboards import (
     MENU_DOCS,
     MENU_FAQ,
+    MENU_FAQ_BACK,
     MENU_LABELS,
     MENU_MAIN,
     MENU_OTHER,
@@ -45,7 +46,10 @@ from app.tickets.service import format_admin_message, format_summary
 from app.tickets.storage import TicketStorage
 
 MAIN_MENU_TEXT = WELCOME_TEXT
-FAQ_MENU_TEXT = "Выберите вопрос:"
+FAQ_MENU_TEXT = (
+    "Частые вопросы по услугам.\n\n"
+    "Выберите интересующий раздел — отвечу кратко и по делу."
+)
 RECEIVED_TEXT = "Получил сообщение"
 START_COMMAND = "/start"
 
@@ -208,6 +212,10 @@ class BotRouter:
             return
 
         if payload == MENU_FAQ:
+            await self._show_faq_menu(chat_id)
+            return
+
+        if payload == MENU_FAQ_BACK:
             await self._show_faq_menu(chat_id)
             return
 
