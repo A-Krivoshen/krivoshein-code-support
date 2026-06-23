@@ -1,0 +1,19 @@
+# After deploy, register webhook once:
+#   python -m scripts.register_webhook
+
+[Unit]
+Description=Krivoshein Code Support Bot (Webhook)
+After=network.target
+
+[Service]
+Type=simple
+User=bot
+Group=bot
+WorkingDirectory=/opt/krivoshein-code-support
+EnvironmentFile=/opt/krivoshein-code-support/.env
+ExecStart=/opt/krivoshein-code-support/venv/bin/uvicorn app.webhook:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
