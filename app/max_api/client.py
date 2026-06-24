@@ -104,14 +104,24 @@ class MaxApiClient:
         )
         return self._parse_send_message_response(payload)
 
-    async def send_message_media(self, chat_id: int, media_id: str) -> SendMessageResponse:
+    @staticmethod
+    def build_message_media_attachment(media_id: str | int) -> dict[str, Any]:
+        if isinstance(media_id, int):
+            normalized_media_id: str | int = media_id
+        elif isinstance(media_id, str) and media_id.isdigit():
+            normalized_media_id = int(media_id)
+        else:
+            normalized_media_id = media_id
+
+        return {
+            "type": "message_media",
+            "payload": {"media_id": normalized_media_id},
+        }
+
+    async def send_message_media(self, chat_id: int, media_id: str | int) -> SendMessageResponse:
         body: dict[str, Any] = {
-            "attachments": [
-                {
-                    "type": "message_media",
-                    "payload": {"media_id": media_id},
-                }
-            ]
+            "attachments": [self.build_message_media_attachment(media_id)],
+            "notify": False,
         }
         payload = await self._request(
             "POST",

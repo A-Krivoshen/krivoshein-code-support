@@ -54,7 +54,7 @@ from app.max_api.client import MaxApiClient
 from app.max_api.exceptions import MaxApiError
 from app.max_api.types import ReplyMarkup
 from app.tickets.models import TicketDraft, TicketSession
-from app.tickets.service import format_admin_message, format_summary
+from app.tickets.service import format_summary, send_ticket_to_admin
 from app.tickets.storage import TicketStorage
 
 MAIN_MENU_TEXT = WELCOME_TEXT
@@ -511,35 +511,23 @@ class BotRouter:
             await self._send_message(chat_id, TICKET_ADMIN_NOT_CONFIGURED_TEXT)
             return
 
-        admin_text = format_admin_message(session.draft, chat_id)
-        try:
-            await self.client.send_message(admin_channel_id, admin_text)
-        except MaxApiError:
-            self.logger.exception(
-                "Не удалось отправить заявку в admin_channel_id=%s",
-                admin_channel_id,
-            )
+        result = await send_ticket_to_admin(
+            self.client,
+            admin_channel_id,
+            session.draft,
+            chat_id,
+        )
+        if not result.text_sent:
             await self._send_message(chat_id, TICKET_ADMIN_SEND_FAILED_TEXT)
             return
 
-        for index, media_id in enumerate(session.draft.media, start=1):
-            try:
-                await self.client.send_message_media(admin_channel_id, media_id)
-            except MaxApiError:
-                self.logger.exception(
-                    "Не удалось отправить изображение %s/%s в admin_channel_id=%s, media_id=%s",
-                    index,
-                    len(session.draft.media),
-                    admin_channel_id,
-                    media_id,
-                )
-
         self.logger.info(
-            "Заявка отправлена: chat_id=%s, topic=%s, urgency=%s, media=%s",
+            "Заявка отправлена: chat_id=%s, topic=%s, urgency=%s, media_sent=%s, media_failed=%s",
             chat_id,
             session.draft.topic,
             session.draft.urgency,
-            len(session.draft.media),
+            result.media_sent,
+            result.media_failed,
         )
         await self.storage.delete_session(chat_id)
         await self._send_message(chat_id, TICKET_SUBMITTED_SUCCESS_TEXT)
