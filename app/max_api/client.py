@@ -126,22 +126,23 @@ class MaxApiClient:
             "payload": {"media_id": MaxApiClient._normalize_media_id(media_id)},
         }
 
+    @staticmethod
+    def _build_media_message_body(attachment: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "attachments": [attachment],
+            "notify": False,
+        }
+
     async def send_message_attachment(
         self,
         chat_id: int,
         attachment: dict[str, Any],
-        *,
-        notify: bool = False,
     ) -> SendMessageResponse:
-        body: dict[str, Any] = {
-            "attachments": [attachment],
-            "notify": notify,
-        }
         payload = await self._request(
             "POST",
             "/messages",
             params={"chat_id": chat_id},
-            json=body,
+            json=self._build_media_message_body(attachment),
         )
         return self._parse_send_message_response(payload)
 
@@ -149,7 +150,6 @@ class MaxApiClient:
         return await self.send_message_attachment(
             chat_id,
             self.build_message_media_attachment(media_id),
-            notify=False,
         )
 
     async def forward_ticket_image(
@@ -164,7 +164,6 @@ class MaxApiClient:
             return await self.send_message_attachment(
                 chat_id,
                 self.build_image_token_attachment(token),
-                notify=False,
             )
 
         ref = media_id if media_id is not None else photo_id
