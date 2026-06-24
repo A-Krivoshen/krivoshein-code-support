@@ -8,11 +8,11 @@ from app.max_api.exceptions import MaxApiError
 
 
 async def run() -> None:
-    """Точка входа Grok Builder"""
+    """Точка входа для проверки подключения к MAX API."""
     setup_logging(settings.log_level)
 
     logger = logging.getLogger(__name__)
-    logger.info("Grok Builder запускается...")
+    logger.info("Запуск проверки подключения...")
 
     if not settings.max_bot_token:
         logger.error("MAX_BOT_TOKEN не найден в .env!")

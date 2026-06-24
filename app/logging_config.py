@@ -3,7 +3,7 @@ import sys
 
 
 def setup_logging(level: str = "INFO") -> None:
-    """Настройка логирования для Grok Builder"""
+    """Настройка логирования приложения."""
 
     log_level = getattr(logging, level.upper(), logging.INFO)
 

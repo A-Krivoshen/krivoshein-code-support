@@ -3,7 +3,7 @@ from pydantic import Field
 
 
 class Settings(BaseSettings):
-    """Настройки проекта Grok Builder (MAX Universal Bot)"""
+    """Настройки приложения."""
 
     # MAX Bot
     max_bot_token: str = Field(..., alias="MAX_BOT_TOKEN")
