@@ -84,21 +84,29 @@ class MaxApiClient:
     async def get_webhook_subscriptions(self) -> dict[str, Any]:
         return await self._request("GET", "/subscriptions")
 
-    async def _post_message(self, chat_id: int, body: dict[str, Any]) -> SendMessageResponse:
-        if chat_id < 0:
-            body = {**body, "notify": False}
+    @staticmethod
+    def _is_channel(chat_id: int) -> bool:
+        return chat_id < 0
 
+    @staticmethod
+    def _apply_channel_notify(chat_id: int, body: dict[str, Any]) -> dict[str, Any]:
+        if chat_id < 0:
+            return {**body, "notify": False}
+        return body
+
+    async def _post_message(self, chat_id: int, body: dict[str, Any]) -> SendMessageResponse:
         payload = await self._request(
             "POST",
             "/messages",
             params={"chat_id": chat_id},
-            json=body,
+            json=self._apply_channel_notify(chat_id, body),
         )
         return self._parse_send_message_response(payload)
 
     @staticmethod
     def _build_message_body(
         *,
+        chat_id: int | None = None,
         text: str | None = None,
         attachments: list[dict[str, Any]] | None = None,
         notify: bool | None = None,
@@ -108,7 +116,9 @@ class MaxApiClient:
             body["text"] = text
         if attachments:
             body["attachments"] = attachments
-        if notify is not None:
+        if chat_id is not None and chat_id < 0:
+            body["notify"] = False
+        elif notify is not None:
             body["notify"] = notify
         return body
 
@@ -120,8 +130,12 @@ class MaxApiClient:
         *,
         notify: bool | None = None,
     ) -> SendMessageResponse:
+        if self._is_channel(chat_id):
+            notify = False
+
         attachments = self._build_attachments(reply_markup)
         body = self._build_message_body(
+            chat_id=chat_id,
             text=text,
             attachments=attachments or None,
             notify=notify,
@@ -129,7 +143,8 @@ class MaxApiClient:
         return await self._post_message(chat_id, body)
 
     async def send_channel_message(self, chat_id: int, text: str) -> SendMessageResponse:
-        return await self._post_message(chat_id, self._build_message_body(text=text))
+        body = self._build_message_body(chat_id=chat_id, text=text, notify=False)
+        return await self._post_message(chat_id, body)
 
     @staticmethod
     def build_image_token_attachment(token: str) -> dict[str, Any]:
@@ -145,7 +160,7 @@ class MaxApiClient:
     ) -> SendMessageResponse:
         return await self._post_message(
             chat_id,
-            self._build_message_body(attachments=[attachment]),
+            self._build_message_body(chat_id=chat_id, attachments=[attachment]),
         )
 
     async def forward_ticket_image(self, chat_id: int, *, token: str) -> SendMessageResponse:
@@ -156,6 +171,7 @@ class MaxApiClient:
         return await self._post_message(
             chat_id,
             self._build_message_body(
+                chat_id=chat_id,
                 attachments=[self.build_image_token_attachment(normalized_token)],
             ),
         )
