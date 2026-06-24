@@ -89,9 +89,9 @@ class MaxApiClient:
         return chat_id < 0
 
     @staticmethod
-    def _apply_channel_notify(chat_id: int, body: dict[str, Any]) -> dict[str, Any]:
-        if chat_id < 0:
-            return {**body, "notify": False}
+    def _strip_notify_for_channel(chat_id: int, body: dict[str, Any]) -> dict[str, Any]:
+        if chat_id < 0 and "notify" in body:
+            return {key: value for key, value in body.items() if key != "notify"}
         return body
 
     async def _post_message(self, chat_id: int, body: dict[str, Any]) -> SendMessageResponse:
@@ -99,7 +99,7 @@ class MaxApiClient:
             "POST",
             "/messages",
             params={"chat_id": chat_id},
-            json=self._apply_channel_notify(chat_id, body),
+            json=self._strip_notify_for_channel(chat_id, body),
         )
         return self._parse_send_message_response(payload)
 
@@ -116,10 +116,9 @@ class MaxApiClient:
             body["text"] = text
         if attachments:
             body["attachments"] = attachments
-        if chat_id is not None and chat_id < 0:
-            body["notify"] = False
-        elif notify is not None:
-            body["notify"] = notify
+        if chat_id is None or chat_id >= 0:
+            if notify is not None:
+                body["notify"] = notify
         return body
 
     async def send_message(
@@ -131,7 +130,7 @@ class MaxApiClient:
         notify: bool | None = None,
     ) -> SendMessageResponse:
         if self._is_channel(chat_id):
-            notify = False
+            notify = None
 
         attachments = self._build_attachments(reply_markup)
         body = self._build_message_body(
@@ -143,8 +142,10 @@ class MaxApiClient:
         return await self._post_message(chat_id, body)
 
     async def send_channel_message(self, chat_id: int, text: str) -> SendMessageResponse:
-        body = self._build_message_body(chat_id=chat_id, text=text, notify=False)
-        return await self._post_message(chat_id, body)
+        return await self._post_message(
+            chat_id,
+            self._build_message_body(chat_id=chat_id, text=text),
+        )
 
     @staticmethod
     def build_image_token_attachment(token: str) -> dict[str, Any]:
