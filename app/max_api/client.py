@@ -85,6 +85,9 @@ class MaxApiClient:
         return await self._request("GET", "/subscriptions")
 
     async def _post_message(self, chat_id: int, body: dict[str, Any]) -> SendMessageResponse:
+        if chat_id < 0:
+            body = {**body, "notify": False}
+
         payload = await self._request(
             "POST",
             "/messages",
@@ -94,7 +97,7 @@ class MaxApiClient:
         return self._parse_send_message_response(payload)
 
     @staticmethod
-    def _build_send_body(
+    def _build_message_body(
         *,
         text: str | None = None,
         attachments: list[dict[str, Any]] | None = None,
@@ -109,19 +112,6 @@ class MaxApiClient:
             body["notify"] = notify
         return body
 
-    @staticmethod
-    def _build_channel_body(
-        *,
-        text: str | None = None,
-        attachments: list[dict[str, Any]] | None = None,
-    ) -> dict[str, Any]:
-        body: dict[str, Any] = {"notify": False}
-        if text is not None:
-            body["text"] = text
-        if attachments:
-            body["attachments"] = attachments
-        return body
-
     async def send_message(
         self,
         chat_id: int,
@@ -131,7 +121,7 @@ class MaxApiClient:
         notify: bool | None = None,
     ) -> SendMessageResponse:
         attachments = self._build_attachments(reply_markup)
-        body = self._build_send_body(
+        body = self._build_message_body(
             text=text,
             attachments=attachments or None,
             notify=notify,
@@ -139,7 +129,7 @@ class MaxApiClient:
         return await self._post_message(chat_id, body)
 
     async def send_channel_message(self, chat_id: int, text: str) -> SendMessageResponse:
-        return await self._post_message(chat_id, self._build_channel_body(text=text))
+        return await self._post_message(chat_id, self._build_message_body(text=text))
 
     @staticmethod
     def build_image_token_attachment(token: str) -> dict[str, Any]:
@@ -155,7 +145,7 @@ class MaxApiClient:
     ) -> SendMessageResponse:
         return await self._post_message(
             chat_id,
-            self._build_channel_body(attachments=[attachment]),
+            self._build_message_body(attachments=[attachment]),
         )
 
     async def forward_ticket_image(self, chat_id: int, *, token: str) -> SendMessageResponse:
@@ -165,7 +155,7 @@ class MaxApiClient:
 
         return await self._post_message(
             chat_id,
-            self._build_channel_body(
+            self._build_message_body(
                 attachments=[self.build_image_token_attachment(normalized_token)],
             ),
         )
