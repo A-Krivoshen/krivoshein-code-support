@@ -84,22 +84,7 @@ class MaxApiClient:
     async def get_webhook_subscriptions(self) -> dict[str, Any]:
         return await self._request("GET", "/subscriptions")
 
-    async def send_message(
-        self,
-        chat_id: int,
-        text: str,
-        reply_markup: ReplyMarkup | None = None,
-        *,
-        notify: bool | None = None,
-    ) -> SendMessageResponse:
-        body: dict[str, Any] = {"text": text}
-        if notify is not None:
-            body["notify"] = notify
-
-        attachments = self._build_attachments(reply_markup)
-        if attachments:
-            body["attachments"] = attachments
-
+    async def _post_message(self, chat_id: int, body: dict[str, Any]) -> SendMessageResponse:
         payload = await self._request(
             "POST",
             "/messages",
@@ -109,15 +94,58 @@ class MaxApiClient:
         return self._parse_send_message_response(payload)
 
     @staticmethod
+    def _build_send_body(
+        *,
+        text: str | None = None,
+        attachments: list[dict[str, Any]] | None = None,
+        notify: bool | None = None,
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {}
+        if text is not None:
+            body["text"] = text
+        if attachments:
+            body["attachments"] = attachments
+        if notify is not None:
+            body["notify"] = notify
+        return body
+
+    @staticmethod
+    def _build_channel_body(
+        *,
+        text: str | None = None,
+        attachments: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {"notify": False}
+        if text is not None:
+            body["text"] = text
+        if attachments:
+            body["attachments"] = attachments
+        return body
+
+    async def send_message(
+        self,
+        chat_id: int,
+        text: str,
+        reply_markup: ReplyMarkup | None = None,
+        *,
+        notify: bool | None = None,
+    ) -> SendMessageResponse:
+        attachments = self._build_attachments(reply_markup)
+        body = self._build_send_body(
+            text=text,
+            attachments=attachments or None,
+            notify=notify,
+        )
+        return await self._post_message(chat_id, body)
+
+    async def send_channel_message(self, chat_id: int, text: str) -> SendMessageResponse:
+        return await self._post_message(chat_id, self._build_channel_body(text=text))
+
+    @staticmethod
     def build_image_token_attachment(token: str) -> dict[str, Any]:
         return {
-            "attachments": [
-                {
-                    "type": "image",
-                    "payload": {"token": token},
-                }
-            ],
-            "notify": False,
+            "type": "image",
+            "payload": {"token": token},
         }
 
     async def send_message_attachment(
@@ -125,31 +153,22 @@ class MaxApiClient:
         chat_id: int,
         attachment: dict[str, Any],
     ) -> SendMessageResponse:
-        body: dict[str, Any] = {
-            "attachments": [attachment],
-            "notify": False,
-        }
-        payload = await self._request(
-            "POST",
-            "/messages",
-            params={"chat_id": chat_id},
-            json=body,
+        return await self._post_message(
+            chat_id,
+            self._build_channel_body(attachments=[attachment]),
         )
-        return self._parse_send_message_response(payload)
 
     async def forward_ticket_image(self, chat_id: int, *, token: str) -> SendMessageResponse:
         normalized_token = token.strip()
         if not normalized_token:
             raise MaxApiRequestError("Image token is required for media forwarding")
 
-        body = self.build_image_token_attachment(normalized_token)
-        payload = await self._request(
-            "POST",
-            "/messages",
-            params={"chat_id": chat_id},
-            json=body,
+        return await self._post_message(
+            chat_id,
+            self._build_channel_body(
+                attachments=[self.build_image_token_attachment(normalized_token)],
+            ),
         )
-        return self._parse_send_message_response(payload)
 
     @staticmethod
     def _build_attachments(reply_markup: ReplyMarkup | None) -> list[dict[str, Any]]:

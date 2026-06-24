@@ -110,7 +110,7 @@ async def send_ticket_to_admin(
     admin_text = format_admin_message(draft, chat_id)
 
     try:
-        await client.send_message(admin_channel_id, admin_text, notify=False)
+        await client.send_channel_message(admin_channel_id, admin_text)
     except MaxApiError:
         logger.exception(
             "Не удалось отправить текст заявки в admin_channel_id=%s",
