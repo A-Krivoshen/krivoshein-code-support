@@ -35,6 +35,11 @@ TICKET_DESCRIPTION_SAVED_TEXT = (
 
 TICKET_MEDIA_SAVED_TEXT = "Изображение сохранено. Прикреплено изображений: {count}."
 
+TICKET_MEDIA_REJECTED_TEXT = (
+    "Не удалось принять изображение — не получен token для пересылки. "
+    "Попробуйте отправить скриншот ещё раз."
+)
+
 TICKET_DESCRIPTION_EMPTY_TEXT = (
     "Сначала опишите проблему текстом, затем нажмите «Далее»."
 )

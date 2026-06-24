@@ -31,8 +31,9 @@ def format_summary(draft: TicketDraft) -> str:
         f"📌 Тема: {draft.topic}",
         f"📝 Описание:\n{draft.description}",
     ]
-    if draft.media:
-        lines.append(f"🖼 Прикреплено изображений: {len(draft.media)}")
+    forwardable_media = draft.forwardable_media()
+    if forwardable_media:
+        lines.append(f"🖼 Прикреплено изображений: {len(forwardable_media)}")
     lines.extend(
         [
             f"📞 Контакт: {draft.contact}",
@@ -58,8 +59,9 @@ def format_admin_message(draft: TicketDraft, chat_id: int) -> str:
         draft.description,
         f"🕐 {created_label}",
     ]
-    if draft.media:
-        lines.append(f"🖼 Прикреплено изображений: {len(draft.media)}")
+    forwardable_media = draft.forwardable_media()
+    if forwardable_media:
+        lines.append(f"🖼 Прикреплено изображений: {len(forwardable_media)}")
     return "\n".join(lines)
 
 
@@ -104,7 +106,7 @@ async def send_ticket_to_admin(
     draft: TicketDraft,
     chat_id: int,
 ) -> TicketSendResult:
-    media_total = len(draft.media)
+    media_total = len(draft.forwardable_media())
     admin_text = format_admin_message(draft, chat_id)
 
     try:
@@ -123,7 +125,7 @@ async def send_ticket_to_admin(
 
     media_sent = 0
     media_failed = 0
-    for index, item in enumerate(draft.media, start=1):
+    for index, item in enumerate(draft.forwardable_media(), start=1):
         if await _forward_ticket_media_item(
             client,
             admin_channel_id,

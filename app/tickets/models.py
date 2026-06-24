@@ -16,6 +16,9 @@ class TicketMedia(BaseModel):
     def has_token(self) -> bool:
         return bool(self.token)
 
+    def is_forwardable(self) -> bool:
+        return self.has_token()
+
     def merge(self, other: TicketMedia) -> TicketMedia:
         return TicketMedia(
             photo_id=self.photo_id if self.photo_id is not None else other.photo_id,
@@ -39,6 +42,9 @@ class TicketDraft(BaseModel):
     contact: str = ""
     urgency: str = ""
     media: list[TicketMedia] = Field(default_factory=list)
+
+    def forwardable_media(self) -> list[TicketMedia]:
+        return [item for item in self.media if item.is_forwardable()]
 
 
 class TicketSession(BaseModel):

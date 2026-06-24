@@ -41,6 +41,7 @@ from app.bot.texts import (
     TICKET_DESCRIPTION_TEXT,
     TICKET_INVALID_INPUT_TEXT,
     TICKET_MEDIA_NOT_HERE_TEXT,
+    TICKET_MEDIA_REJECTED_TEXT,
     TICKET_MEDIA_SAVED_TEXT,
     TICKET_SUBMITTED_MEDIA_PARTIAL_TEXT,
     TICKET_SUBMITTED_SUCCESS_TEXT,
@@ -57,6 +58,8 @@ from app.max_api.types import ReplyMarkup
 from app.tickets.models import TicketDraft, TicketMedia, TicketSession
 from app.tickets.service import format_summary, send_ticket_to_admin
 from app.tickets.storage import TicketStorage
+
+_logger = logging.getLogger(__name__)
 
 MAIN_MENU_TEXT = WELCOME_TEXT
 FAQ_MENU_TEXT = (
@@ -169,6 +172,14 @@ def _ticket_media_from_payload(payload: dict[str, Any]) -> TicketMedia | None:
     if token is None and photo_id is None and media_id is None:
         return None
 
+    _logger.info(
+        "media parsed: photo_id=%s media_id=%s token_present=%s payload_keys=%s",
+        photo_id,
+        media_id,
+        bool(token),
+        sorted(payload.keys()),
+    )
+
     return TicketMedia(photo_id=photo_id, media_id=media_id, token=token)
 
 
@@ -215,7 +226,7 @@ def _ticket_media_from_attachment(item: dict[str, Any]) -> TicketMedia | None:
 
 
 def _append_ticket_media(draft: TicketDraft, item: TicketMedia) -> bool:
-    if not item.is_valid():
+    if not item.is_forwardable():
         return False
 
     for index, existing in enumerate(draft.media):
@@ -506,14 +517,28 @@ class BotRouter:
 
             if media_items:
                 added = 0
+                rejected = 0
                 for media_item in media_items:
                     if _append_ticket_media(session.draft, media_item):
                         added += 1
+                    elif media_item.is_valid():
+                        rejected += 1
+
                 if added:
                     await self.storage.save_session(session)
                     await self._send_message(
                         chat_id,
-                        TICKET_MEDIA_SAVED_TEXT.format(count=len(session.draft.media)),
+                        TICKET_MEDIA_SAVED_TEXT.format(
+                            count=len(session.draft.forwardable_media()),
+                        ),
+                        reply_markup=get_ticket_description_keyboard(),
+                    )
+                    handled = True
+
+                if rejected:
+                    await self._send_message(
+                        chat_id,
+                        TICKET_MEDIA_REJECTED_TEXT,
                         reply_markup=get_ticket_description_keyboard(),
                     )
                     handled = True
