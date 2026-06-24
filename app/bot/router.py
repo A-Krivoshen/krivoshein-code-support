@@ -42,6 +42,7 @@ from app.bot.texts import (
     TICKET_INVALID_INPUT_TEXT,
     TICKET_MEDIA_NOT_HERE_TEXT,
     TICKET_MEDIA_SAVED_TEXT,
+    TICKET_SUBMITTED_MEDIA_PARTIAL_TEXT,
     TICKET_SUBMITTED_SUCCESS_TEXT,
     OTHER_MENU_TEXT,
     OTHER_TASK_TEXT,
@@ -53,7 +54,7 @@ from app.config import settings
 from app.max_api.client import MaxApiClient
 from app.max_api.exceptions import MaxApiError
 from app.max_api.types import ReplyMarkup
-from app.tickets.models import TicketDraft, TicketSession
+from app.tickets.models import TicketDraft, TicketMedia, TicketSession
 from app.tickets.service import format_summary, send_ticket_to_admin
 from app.tickets.storage import TicketStorage
 
@@ -129,15 +130,52 @@ def extract_message_text(update: dict[str, Any]) -> str | None:
     return None
 
 
-def _media_id_from_value(value: Any) -> str | None:
-    if isinstance(value, str) and value.strip():
-        return value.strip()
+def _int_from_value(value: Any) -> int | None:
     if isinstance(value, int):
-        return str(value)
+        return value
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
     return None
 
 
-def _media_id_from_attachment(item: dict[str, Any]) -> str | None:
+def _token_from_value(value: Any) -> str | None:
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return None
+
+
+def _ticket_media_from_payload(payload: dict[str, Any]) -> TicketMedia | None:
+    token = _token_from_value(payload.get("token"))
+    photo_id = _int_from_value(payload.get("photo_id"))
+    media_id = _int_from_value(payload.get("media_id"))
+
+    if token is None and photo_id is None and media_id is None:
+        return None
+
+    return TicketMedia(photo_id=photo_id, media_id=media_id, token=token)
+
+
+def _ticket_media_from_media_item(item: Any) -> TicketMedia | None:
+    if isinstance(item, dict):
+        return _ticket_media_from_payload(item)
+
+    if isinstance(item, str):
+        stripped = item.strip()
+        if not stripped:
+            return None
+        if stripped.isdigit():
+            media_id = int(stripped)
+            return TicketMedia(photo_id=media_id, media_id=media_id)
+        return TicketMedia(token=stripped)
+
+    media_id = _int_from_value(item)
+    if media_id is not None:
+        return TicketMedia(photo_id=media_id, media_id=media_id)
+
+    return None
+
+
+def _ticket_media_from_attachment(item: dict[str, Any]) -> TicketMedia | None:
     att_type = str(item.get("type", ""))
     if att_type in _KEYBOARD_ATTACHMENT_TYPES:
         return None
@@ -148,21 +186,27 @@ def _media_id_from_attachment(item: dict[str, Any]) -> str | None:
     if not isinstance(payload, dict):
         return None
 
-    return _media_id_from_value(payload.get("media_id"))
+    return _ticket_media_from_payload(payload)
 
 
-def extract_message_media_ids(update: dict[str, Any]) -> list[str]:
-    media_ids: list[str] = []
+def _append_ticket_media(draft: TicketDraft, item: TicketMedia) -> bool:
+    if not item.is_valid():
+        return False
+    if any(existing.matches(item) for existing in draft.media):
+        return False
+    draft.media.append(item)
+    return True
+
+
+def extract_ticket_media(update: dict[str, Any]) -> list[TicketMedia]:
+    media_items: list[TicketMedia] = []
 
     media = update.get("media")
     if isinstance(media, list):
         for item in media:
-            if isinstance(item, dict):
-                media_id = _media_id_from_value(item.get("media_id"))
-            else:
-                media_id = _media_id_from_value(item)
-            if media_id and media_id not in media_ids:
-                media_ids.append(media_id)
+            parsed = _ticket_media_from_media_item(item)
+            if parsed is not None and not any(existing.matches(parsed) for existing in media_items):
+                media_items.append(parsed)
 
     message = update.get("message")
     if isinstance(message, dict):
@@ -173,11 +217,13 @@ def extract_message_media_ids(update: dict[str, Any]) -> list[str]:
                 for attachment in attachments:
                     if not isinstance(attachment, dict):
                         continue
-                    media_id = _media_id_from_attachment(attachment)
-                    if media_id and media_id not in media_ids:
-                        media_ids.append(media_id)
+                    parsed = _ticket_media_from_attachment(attachment)
+                    if parsed is not None and not any(
+                        existing.matches(parsed) for existing in media_items
+                    ):
+                        media_items.append(parsed)
 
-    return media_ids
+    return media_items
 
 
 def extract_callback_payload(update: dict[str, Any]) -> str | None:
@@ -418,27 +464,29 @@ class BotRouter:
             return
 
         text = extract_message_text(update)
-        media_ids = extract_message_media_ids(update)
+        media_items = extract_ticket_media(update)
 
         if session.state == TicketState.TICKET_DESCRIPTION:
             handled = False
 
-            if media_ids:
-                for media_id in media_ids:
-                    if media_id not in session.draft.media:
-                        session.draft.media.append(media_id)
-                await self.storage.save_session(session)
-                await self._send_message(
-                    chat_id,
-                    TICKET_MEDIA_SAVED_TEXT.format(count=len(session.draft.media)),
-                    reply_markup=get_ticket_description_keyboard(),
-                )
-                handled = True
+            if media_items:
+                added = 0
+                for media_item in media_items:
+                    if _append_ticket_media(session.draft, media_item):
+                        added += 1
+                if added:
+                    await self.storage.save_session(session)
+                    await self._send_message(
+                        chat_id,
+                        TICKET_MEDIA_SAVED_TEXT.format(count=len(session.draft.media)),
+                        reply_markup=get_ticket_description_keyboard(),
+                    )
+                    handled = True
 
             if text:
                 session.draft.description = text
                 await self.storage.save_session(session)
-                if not media_ids:
+                if not media_items:
                     await self._send_message(
                         chat_id,
                         TICKET_DESCRIPTION_SAVED_TEXT,
@@ -455,7 +503,7 @@ class BotRouter:
             return
 
         if not text:
-            if media_ids:
+            if media_items:
                 await self._send_message(chat_id, TICKET_MEDIA_NOT_HERE_TEXT)
             else:
                 await self._send_message(chat_id, "Пожалуйста, отправьте текстовое сообщение.")
@@ -530,7 +578,10 @@ class BotRouter:
             result.media_failed,
         )
         await self.storage.delete_session(chat_id)
-        await self._send_message(chat_id, TICKET_SUBMITTED_SUCCESS_TEXT)
+        if result.media_total > 0 and result.media_failed > 0:
+            await self._send_message(chat_id, TICKET_SUBMITTED_MEDIA_PARTIAL_TEXT)
+        else:
+            await self._send_message(chat_id, TICKET_SUBMITTED_SUCCESS_TEXT)
         await self._send_main_menu(chat_id)
 
     async def _cancel_ticket(self, chat_id: int) -> None:

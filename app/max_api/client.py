@@ -105,23 +105,37 @@ class MaxApiClient:
         return self._parse_send_message_response(payload)
 
     @staticmethod
-    def build_message_media_attachment(media_id: str | int) -> dict[str, Any]:
+    def _normalize_media_id(media_id: str | int) -> int:
         if isinstance(media_id, int):
-            normalized_media_id: str | int = media_id
-        elif isinstance(media_id, str) and media_id.isdigit():
-            normalized_media_id = int(media_id)
-        else:
-            normalized_media_id = media_id
+            return media_id
+        if isinstance(media_id, str) and media_id.isdigit():
+            return int(media_id)
+        raise MaxApiRequestError(f"Invalid media_id value: {media_id!r}")
 
+    @staticmethod
+    def build_image_token_attachment(token: str) -> dict[str, Any]:
         return {
-            "type": "message_media",
-            "payload": {"media_id": normalized_media_id},
+            "type": "image",
+            "payload": {"token": token},
         }
 
-    async def send_message_media(self, chat_id: int, media_id: str | int) -> SendMessageResponse:
+    @staticmethod
+    def build_message_media_attachment(media_id: str | int) -> dict[str, Any]:
+        return {
+            "type": "message_media",
+            "payload": {"media_id": MaxApiClient._normalize_media_id(media_id)},
+        }
+
+    async def send_message_attachment(
+        self,
+        chat_id: int,
+        attachment: dict[str, Any],
+        *,
+        notify: bool = False,
+    ) -> SendMessageResponse:
         body: dict[str, Any] = {
-            "attachments": [self.build_message_media_attachment(media_id)],
-            "notify": False,
+            "attachments": [attachment],
+            "notify": notify,
         }
         payload = await self._request(
             "POST",
@@ -130,6 +144,34 @@ class MaxApiClient:
             json=body,
         )
         return self._parse_send_message_response(payload)
+
+    async def send_message_media(self, chat_id: int, media_id: str | int) -> SendMessageResponse:
+        return await self.send_message_attachment(
+            chat_id,
+            self.build_message_media_attachment(media_id),
+            notify=False,
+        )
+
+    async def forward_ticket_image(
+        self,
+        chat_id: int,
+        *,
+        token: str | None = None,
+        photo_id: int | None = None,
+        media_id: int | None = None,
+    ) -> SendMessageResponse:
+        if token:
+            return await self.send_message_attachment(
+                chat_id,
+                self.build_image_token_attachment(token),
+                notify=False,
+            )
+
+        ref = media_id if media_id is not None else photo_id
+        if ref is not None:
+            return await self.send_message_media(chat_id, ref)
+
+        raise MaxApiRequestError("No media reference for ticket image forwarding")
 
     @staticmethod
     def _build_attachments(reply_markup: ReplyMarkup | None) -> list[dict[str, Any]]:

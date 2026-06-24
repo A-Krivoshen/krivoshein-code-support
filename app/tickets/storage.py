@@ -2,28 +2,74 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+from typing import Any
 
 import aiosqlite
 
 from app.bot.states import TicketState
-from app.tickets.models import TicketDraft, TicketSession
+from app.tickets.models import TicketDraft, TicketMedia, TicketSession
 
 
-def _media_from_draft_json(draft_json: str) -> list[str]:
+def _int_from_value(value: Any) -> int | None:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
+    return None
+
+
+def _ticket_media_from_raw(item: Any) -> TicketMedia | None:
+    if isinstance(item, str):
+        stripped = item.strip()
+        if not stripped:
+            return None
+        if stripped.isdigit():
+            media_id = int(stripped)
+            return TicketMedia(photo_id=media_id, media_id=media_id)
+        return TicketMedia(token=stripped)
+
+    if not isinstance(item, dict):
+        return None
+
+    token = item.get("token")
+    media = TicketMedia(
+        photo_id=_int_from_value(item.get("photo_id")),
+        media_id=_int_from_value(item.get("media_id")),
+        token=token.strip() if isinstance(token, str) and token.strip() else None,
+    )
+    return media if media.is_valid() else None
+
+
+def _media_from_draft_json(draft_json: str) -> list[TicketMedia]:
     try:
         data = json.loads(draft_json)
     except json.JSONDecodeError:
         return []
     if not isinstance(data, dict):
         return []
+
     media = data.get("media")
     if not isinstance(media, list):
         return []
-    return [str(item) for item in media if item]
+
+    result: list[TicketMedia] = []
+    for item in media:
+        parsed = _ticket_media_from_raw(item)
+        if parsed is None:
+            continue
+        if any(existing.matches(parsed) for existing in result):
+            continue
+        result.append(parsed)
+    return result
 
 
-def _draft_json_from_media(media: list[str]) -> str:
-    return json.dumps({"media": media}, ensure_ascii=False)
+def _draft_json_from_media(media: list[TicketMedia]) -> str:
+    payload = [
+        item.model_dump(exclude_none=True)
+        for item in media
+        if item.is_valid()
+    ]
+    return json.dumps({"media": payload}, ensure_ascii=False)
 
 
 class TicketStorage:
