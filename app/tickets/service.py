@@ -25,19 +25,32 @@ class TicketSendResult:
     media_total: int
 
 
+def _screenshot_label(count: int) -> str:
+    if count % 10 == 1 and count % 100 != 11:
+        return "скриншот"
+    if count % 10 in {2, 3, 4} and count % 100 not in {12, 13, 14}:
+        return "скриншота"
+    return "скриншотов"
+
+
 def format_summary(draft: TicketDraft) -> str:
+    urgency = draft.urgency or "—"
+    urgency_emoji = URGENCY_EMOJI.get(urgency, "⚪")
     lines = [
-        "Проверьте данные заявки перед отправкой:\n",
-        f"📌 Тема: {draft.topic}",
-        f"📝 Описание:\n{draft.description}",
+        "📋 Ваша заявка",
+        "",
+        f"📌 {draft.topic}  ·  {urgency_emoji} {urgency}",
+        f"📝 {draft.description}",
     ]
     forwardable_media = draft.forwardable_media()
     if forwardable_media:
-        lines.append(f"🖼 Прикреплено изображений: {len(forwardable_media)}")
+        count = len(forwardable_media)
+        lines.append(f"🖼 {count} {_screenshot_label(count)}")
     lines.extend(
         [
-            f"📞 Контакт: {draft.contact}",
-            f"⚡ Срочность: {draft.urgency}",
+            f"📞 {draft.contact}",
+            "",
+            "Всё верно? Нажмите «Отправить» 👇",
         ]
     )
     return "\n".join(lines)
