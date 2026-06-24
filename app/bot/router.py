@@ -32,6 +32,7 @@ from app.bot.keyboards import (
 )
 from app.bot.states import TicketState
 from app.bot.texts import (
+    BTN_TO_MENU,
     TICKET_CANCELLED_TEXT,
     TICKET_CONTACT_INVALID_TEXT,
     TICKET_CONTACT_TEXT,
@@ -66,8 +67,8 @@ FAQ_MENU_TEXT = (
     "Частые вопросы по услугам: сайты, поддержка, реклама, боты и серверы.\n\n"
     "Выберите интересующий раздел — отвечу кратко, с ориентирами по срокам."
 )
-RECEIVED_TEXT = "Получил сообщение"
 START_COMMAND = "/start"
+_MENU_COMMANDS = {START_COMMAND, "start", "старт", "меню", BTN_TO_MENU.lower()}
 
 TICKET_ADMIN_NOT_CONFIGURED_TEXT = (
     "Сейчас не удалось отправить заявку: админ-канал не настроен. Попробуйте позже."
@@ -344,14 +345,55 @@ class BotRouter:
             await self._handle_ticket_message(chat_id, update)
             return
 
-        if text:
-            self.logger.info("Текстовое сообщение от chat_id=%s: %s", chat_id, text)
-            reply = f"{RECEIVED_TEXT}\nВы написали: {text}"
-        else:
-            self.logger.info("Сообщение без текста от chat_id=%s", chat_id)
-            reply = RECEIVED_TEXT
+        await self._handle_idle_message(chat_id, text)
 
-        await self._send_message(chat_id, reply)
+    async def _handle_idle_message(self, chat_id: int, text: str | None) -> None:
+        if text:
+            stripped = text.strip()
+            normalized = stripped.lower()
+
+            if normalized in _MENU_COMMANDS:
+                self.logger.info("Команда меню от chat_id=%s: %s", chat_id, stripped)
+                await self.storage.delete_session(chat_id)
+                await self._send_main_menu(chat_id)
+                return
+
+            for payload, label in MENU_LABELS.items():
+                if stripped == label:
+                    self.logger.info(
+                        "Текстовый выбор меню от chat_id=%s: payload=%s",
+                        chat_id,
+                        payload,
+                    )
+                    await self._handle_menu_payload(chat_id, payload)
+                    return
+
+            self.logger.info("Неизвестное сообщение от chat_id=%s: %s", chat_id, stripped)
+
+        await self._send_main_menu(chat_id)
+
+    async def _handle_menu_payload(self, chat_id: int, payload: str) -> None:
+        if payload == MENU_TICKET:
+            await self._start_ticket_flow(chat_id)
+            return
+
+        if payload == MENU_FAQ:
+            await self._show_faq_menu(chat_id)
+            return
+
+        if payload == MENU_OTHER:
+            await self._show_other_menu(chat_id)
+            return
+
+        if payload == MENU_DOCS:
+            await self._send_message(chat_id, 'Раздел «Документация» скоро будет доступен.')
+            return
+
+        if payload == MENU_MAIN:
+            await self._send_main_menu(chat_id)
+            return
+
+        await self._send_message(chat_id, "Эта кнопка пока не настроена.")
 
     async def _handle_message_callback(self, update: dict[str, Any], chat_id: int | None) -> None:
         payload = extract_callback_payload(update)
@@ -362,24 +404,12 @@ class BotRouter:
 
         self.logger.info("Нажата кнопка: chat_id=%s, payload=%s", chat_id, payload)
 
-        if payload == MENU_TICKET:
-            await self._start_ticket_flow(chat_id)
-            return
-
         if payload in TICKET_CALLBACK_PAYLOADS:
             await self._handle_ticket_callback(chat_id, payload)
             return
 
-        if payload == MENU_OTHER:
-            await self._show_other_menu(chat_id)
-            return
-
         if payload == OTHER_TASK:
             await self._start_other_task_flow(chat_id)
-            return
-
-        if payload == MENU_FAQ:
-            await self._show_faq_menu(chat_id)
             return
 
         if payload == MENU_FAQ_BACK:
@@ -390,10 +420,6 @@ class BotRouter:
             await self._handle_faq_answer(chat_id, payload)
             return
 
-        if payload == MENU_MAIN:
-            await self._send_main_menu(chat_id)
-            return
-
         if await self.storage.has_active_ticket_flow(chat_id):
             await self._send_message(
                 chat_id,
@@ -402,12 +428,7 @@ class BotRouter:
             return
 
         if payload and payload in MENU_LABELS:
-            section = MENU_LABELS[payload]
-            if payload == MENU_DOCS:
-                reply = f'Раздел «{section}» скоро будет доступен.'
-            else:
-                reply = "Эта кнопка пока не настроена."
-            await self._send_message(chat_id, reply)
+            await self._handle_menu_payload(chat_id, payload)
             return
 
         await self._send_message(chat_id, "Эта кнопка пока не настроена.")
