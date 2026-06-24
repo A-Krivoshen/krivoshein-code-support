@@ -105,25 +105,10 @@ class MaxApiClient:
         return self._parse_send_message_response(payload)
 
     @staticmethod
-    def _normalize_media_id(media_id: str | int) -> int:
-        if isinstance(media_id, int):
-            return media_id
-        if isinstance(media_id, str) and media_id.isdigit():
-            return int(media_id)
-        raise MaxApiRequestError(f"Invalid media_id value: {media_id!r}")
-
-    @staticmethod
     def build_image_token_attachment(token: str) -> dict[str, Any]:
         return {
             "type": "image",
             "payload": {"token": token},
-        }
-
-    @staticmethod
-    def build_message_media_attachment(media_id: str | int) -> dict[str, Any]:
-        return {
-            "type": "message_media",
-            "payload": {"media_id": MaxApiClient._normalize_media_id(media_id)},
         }
 
     @staticmethod
@@ -146,31 +131,15 @@ class MaxApiClient:
         )
         return self._parse_send_message_response(payload)
 
-    async def send_message_media(self, chat_id: int, media_id: str | int) -> SendMessageResponse:
+    async def forward_ticket_image(self, chat_id: int, *, token: str) -> SendMessageResponse:
+        normalized_token = token.strip()
+        if not normalized_token:
+            raise MaxApiRequestError("Image token is required for media forwarding")
+
         return await self.send_message_attachment(
             chat_id,
-            self.build_message_media_attachment(media_id),
+            self.build_image_token_attachment(normalized_token),
         )
-
-    async def forward_ticket_image(
-        self,
-        chat_id: int,
-        *,
-        token: str | None = None,
-        photo_id: int | None = None,
-        media_id: int | None = None,
-    ) -> SendMessageResponse:
-        if token:
-            return await self.send_message_attachment(
-                chat_id,
-                self.build_image_token_attachment(token),
-            )
-
-        ref = media_id if media_id is not None else photo_id
-        if ref is not None:
-            return await self.send_message_media(chat_id, ref)
-
-        raise MaxApiRequestError("No media reference for ticket image forwarding")
 
     @staticmethod
     def _build_attachments(reply_markup: ReplyMarkup | None) -> list[dict[str, Any]]:

@@ -144,8 +144,25 @@ def _token_from_value(value: Any) -> str | None:
     return None
 
 
-def _ticket_media_from_payload(payload: dict[str, Any]) -> TicketMedia | None:
+def _extract_token_from_payload(payload: dict[str, Any]) -> str | None:
     token = _token_from_value(payload.get("token"))
+    if token:
+        return token
+
+    photos = payload.get("photos")
+    if isinstance(photos, dict):
+        for photo_data in photos.values():
+            if not isinstance(photo_data, dict):
+                continue
+            token = _token_from_value(photo_data.get("token"))
+            if token:
+                return token
+
+    return None
+
+
+def _ticket_media_from_payload(payload: dict[str, Any]) -> TicketMedia | None:
+    token = _extract_token_from_payload(payload)
     photo_id = _int_from_value(payload.get("photo_id"))
     media_id = _int_from_value(payload.get("media_id"))
 
@@ -183,17 +200,35 @@ def _ticket_media_from_attachment(item: dict[str, Any]) -> TicketMedia | None:
         return None
 
     payload = item.get("payload")
-    if not isinstance(payload, dict):
+    if isinstance(payload, dict):
+        parsed = _ticket_media_from_payload(payload)
+        if parsed is not None:
+            return parsed
+
+    token = _token_from_value(item.get("token"))
+    photo_id = _int_from_value(item.get("photo_id"))
+    media_id = _int_from_value(item.get("media_id"))
+    if token is None and photo_id is None and media_id is None:
         return None
 
-    return _ticket_media_from_payload(payload)
+    return TicketMedia(photo_id=photo_id, media_id=media_id, token=token)
 
 
 def _append_ticket_media(draft: TicketDraft, item: TicketMedia) -> bool:
     if not item.is_valid():
         return False
-    if any(existing.matches(item) for existing in draft.media):
-        return False
+
+    for index, existing in enumerate(draft.media):
+        if not existing.matches(item):
+            continue
+
+        merged = existing.merge(item)
+        if merged == existing:
+            return False
+
+        draft.media[index] = merged
+        return True
+
     draft.media.append(item)
     return True
 

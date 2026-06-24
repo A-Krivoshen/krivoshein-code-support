@@ -13,6 +13,16 @@ class TicketMedia(BaseModel):
     def is_valid(self) -> bool:
         return self.token is not None or self.photo_id is not None or self.media_id is not None
 
+    def has_token(self) -> bool:
+        return bool(self.token)
+
+    def merge(self, other: TicketMedia) -> TicketMedia:
+        return TicketMedia(
+            photo_id=self.photo_id if self.photo_id is not None else other.photo_id,
+            media_id=self.media_id if self.media_id is not None else other.media_id,
+            token=self.token if self.token is not None else other.token,
+        )
+
     def matches(self, other: TicketMedia) -> bool:
         if self.token and other.token and self.token == other.token:
             return True

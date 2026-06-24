@@ -71,33 +71,29 @@ async def _forward_ticket_media_item(
     index: int,
     total: int,
 ) -> bool:
-    if not item.is_valid():
+    if not item.has_token():
         logger.warning(
-            "Пропущено пустое медиа %s/%s для admin_channel_id=%s",
-            index,
-            total,
-            admin_channel_id,
-        )
-        return False
-
-    try:
-        await client.forward_ticket_image(
-            admin_channel_id,
-            token=item.token,
-            photo_id=item.photo_id,
-            media_id=item.media_id,
-        )
-        return True
-    except MaxApiError:
-        logger.exception(
-            "Не удалось переслать изображение %s/%s в admin_channel_id=%s "
-            "(photo_id=%s, media_id=%s, token_present=%s)",
+            "Пропущено медиа без token %s/%s для admin_channel_id=%s (photo_id=%s, media_id=%s)",
             index,
             total,
             admin_channel_id,
             item.photo_id,
             item.media_id,
-            bool(item.token),
+        )
+        return False
+
+    try:
+        await client.forward_ticket_image(admin_channel_id, token=item.token)
+        return True
+    except MaxApiError:
+        logger.exception(
+            "Не удалось переслать изображение %s/%s в admin_channel_id=%s "
+            "(photo_id=%s, media_id=%s)",
+            index,
+            total,
+            admin_channel_id,
+            item.photo_id,
+            item.media_id,
         )
         return False
 
