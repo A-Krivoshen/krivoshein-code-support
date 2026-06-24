@@ -38,6 +38,7 @@ TICKET_URGENCY_VERY_URGENT = "ticket:urgency:very_urgent"
 
 TICKET_CONFIRM_SEND = "ticket:confirm:send"
 TICKET_CONFIRM_CANCEL = "ticket:confirm:cancel"
+TICKET_DESCRIPTION_NEXT = "ticket:description:next"
 
 MENU_LABELS = {
     MENU_TICKET: "Подать заявку",
@@ -124,6 +125,18 @@ def get_ticket_nav_keyboard() -> dict[str, Any]:
         "type": "inline_keyboard",
         "payload": {
             "buttons": [_cancel_row()],
+        },
+    }
+
+
+def get_ticket_description_keyboard() -> dict[str, Any]:
+    return {
+        "type": "inline_keyboard",
+        "payload": {
+            "buttons": [
+                [callback_button("Далее", TICKET_DESCRIPTION_NEXT)],
+                _cancel_row(),
+            ],
         },
     }
 

@@ -16,6 +16,7 @@ from app.bot.keyboards import (
     OTHER_TASK,
     TICKET_CONFIRM_CANCEL,
     TICKET_CONFIRM_SEND,
+    TICKET_DESCRIPTION_NEXT,
     TICKET_TOPIC_LABELS,
     TICKET_TOPIC_OTHER,
     TICKET_URGENCY_LABELS,
@@ -24,6 +25,7 @@ from app.bot.keyboards import (
     get_main_menu,
     get_other_menu_keyboard,
     get_ticket_confirm_keyboard,
+    get_ticket_description_keyboard,
     get_ticket_nav_keyboard,
     get_ticket_topic_keyboard,
     get_ticket_urgency_keyboard,
@@ -33,8 +35,13 @@ from app.bot.texts import (
     TICKET_CANCELLED_TEXT,
     TICKET_CONTACT_INVALID_TEXT,
     TICKET_CONTACT_TEXT,
+    TICKET_DESCRIPTION_EMPTY_TEXT,
+    TICKET_DESCRIPTION_PROMPT_TEXT,
+    TICKET_DESCRIPTION_SAVED_TEXT,
     TICKET_DESCRIPTION_TEXT,
     TICKET_INVALID_INPUT_TEXT,
+    TICKET_MEDIA_NOT_HERE_TEXT,
+    TICKET_MEDIA_SAVED_TEXT,
     TICKET_SUBMITTED_SUCCESS_TEXT,
     OTHER_MENU_TEXT,
     OTHER_TASK_TEXT,
@@ -70,7 +77,11 @@ TICKET_CALLBACK_PAYLOADS = {
     *TICKET_URGENCY_LABELS,
     TICKET_CONFIRM_SEND,
     TICKET_CONFIRM_CANCEL,
+    TICKET_DESCRIPTION_NEXT,
 }
+
+_IMAGE_ATTACHMENT_TYPES = {"image", "photo"}
+_KEYBOARD_ATTACHMENT_TYPES = {"inline_keyboard"}
 
 _EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 _PHONE_RE = re.compile(r"^\+?[\d\s\-()]{7,20}$")
@@ -116,6 +127,57 @@ def extract_message_text(update: dict[str, Any]) -> str | None:
         return text.strip()
 
     return None
+
+
+def _media_id_from_value(value: Any) -> str | None:
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    if isinstance(value, int):
+        return str(value)
+    return None
+
+
+def _media_id_from_attachment(item: dict[str, Any]) -> str | None:
+    att_type = str(item.get("type", ""))
+    if att_type in _KEYBOARD_ATTACHMENT_TYPES:
+        return None
+    if att_type not in _IMAGE_ATTACHMENT_TYPES:
+        return None
+
+    payload = item.get("payload")
+    if not isinstance(payload, dict):
+        return None
+
+    return _media_id_from_value(payload.get("media_id"))
+
+
+def extract_message_media_ids(update: dict[str, Any]) -> list[str]:
+    media_ids: list[str] = []
+
+    media = update.get("media")
+    if isinstance(media, list):
+        for item in media:
+            if isinstance(item, dict):
+                media_id = _media_id_from_value(item.get("media_id"))
+            else:
+                media_id = _media_id_from_value(item)
+            if media_id and media_id not in media_ids:
+                media_ids.append(media_id)
+
+    message = update.get("message")
+    if isinstance(message, dict):
+        body = message.get("body")
+        if isinstance(body, dict):
+            attachments = body.get("attachments")
+            if isinstance(attachments, list):
+                for attachment in attachments:
+                    if not isinstance(attachment, dict):
+                        continue
+                    media_id = _media_id_from_attachment(attachment)
+                    if media_id and media_id not in media_ids:
+                        media_ids.append(media_id)
+
+    return media_ids
 
 
 def extract_callback_payload(update: dict[str, Any]) -> str | None:
@@ -187,7 +249,7 @@ class BotRouter:
             return
 
         if await self.storage.has_active_ticket_flow(chat_id):
-            await self._handle_ticket_text(chat_id, text)
+            await self._handle_ticket_message(chat_id, update)
             return
 
         if text:
@@ -275,7 +337,7 @@ class BotRouter:
         await self._send_message(
             chat_id,
             OTHER_TASK_TEXT,
-            reply_markup=get_ticket_nav_keyboard(),
+            reply_markup=get_ticket_description_keyboard(),
         )
 
     async def _show_other_menu(self, chat_id: int) -> None:
@@ -298,6 +360,28 @@ class BotRouter:
             await self._send_message(
                 chat_id,
                 TICKET_DESCRIPTION_TEXT,
+                reply_markup=get_ticket_description_keyboard(),
+            )
+            return
+
+        if payload == TICKET_DESCRIPTION_NEXT:
+            if session.state != TicketState.TICKET_DESCRIPTION:
+                await self._send_message(chat_id, TICKET_INVALID_INPUT_TEXT)
+                return
+
+            if not session.draft.description.strip():
+                await self._send_message(
+                    chat_id,
+                    TICKET_DESCRIPTION_EMPTY_TEXT,
+                    reply_markup=get_ticket_description_keyboard(),
+                )
+                return
+
+            session.state = TicketState.TICKET_CONTACT
+            await self.storage.save_session(session)
+            await self._send_message(
+                chat_id,
+                TICKET_CONTACT_TEXT,
                 reply_markup=get_ticket_nav_keyboard(),
             )
             return
@@ -328,13 +412,53 @@ class BotRouter:
             await self._cancel_ticket(chat_id)
             return
 
-    async def _handle_ticket_text(self, chat_id: int, text: str | None) -> None:
+    async def _handle_ticket_message(self, chat_id: int, update: dict[str, Any]) -> None:
         session = await self.storage.get_session(chat_id)
         if session is None:
             return
 
+        text = extract_message_text(update)
+        media_ids = extract_message_media_ids(update)
+
+        if session.state == TicketState.TICKET_DESCRIPTION:
+            handled = False
+
+            if media_ids:
+                for media_id in media_ids:
+                    if media_id not in session.draft.media:
+                        session.draft.media.append(media_id)
+                await self.storage.save_session(session)
+                await self._send_message(
+                    chat_id,
+                    TICKET_MEDIA_SAVED_TEXT.format(count=len(session.draft.media)),
+                    reply_markup=get_ticket_description_keyboard(),
+                )
+                handled = True
+
+            if text:
+                session.draft.description = text
+                await self.storage.save_session(session)
+                if not media_ids:
+                    await self._send_message(
+                        chat_id,
+                        TICKET_DESCRIPTION_SAVED_TEXT,
+                        reply_markup=get_ticket_description_keyboard(),
+                    )
+                handled = True
+
+            if not handled:
+                await self._send_message(
+                    chat_id,
+                    TICKET_DESCRIPTION_PROMPT_TEXT,
+                    reply_markup=get_ticket_description_keyboard(),
+                )
+            return
+
         if not text:
-            await self._send_message(chat_id, "Пожалуйста, отправьте текстовое сообщение.")
+            if media_ids:
+                await self._send_message(chat_id, TICKET_MEDIA_NOT_HERE_TEXT)
+            else:
+                await self._send_message(chat_id, "Пожалуйста, отправьте текстовое сообщение.")
             return
 
         if session.state == TicketState.TICKET_TOPIC:
@@ -342,17 +466,6 @@ class BotRouter:
                 chat_id,
                 TICKET_INVALID_INPUT_TEXT,
                 reply_markup=get_ticket_topic_keyboard(),
-            )
-            return
-
-        if session.state == TicketState.TICKET_DESCRIPTION:
-            session.draft.description = text
-            session.state = TicketState.TICKET_CONTACT
-            await self.storage.save_session(session)
-            await self._send_message(
-                chat_id,
-                TICKET_CONTACT_TEXT,
-                reply_markup=get_ticket_nav_keyboard(),
             )
             return
 
@@ -409,11 +522,24 @@ class BotRouter:
             await self._send_message(chat_id, TICKET_ADMIN_SEND_FAILED_TEXT)
             return
 
+        for index, media_id in enumerate(session.draft.media, start=1):
+            try:
+                await self.client.send_message_media(admin_channel_id, media_id)
+            except MaxApiError:
+                self.logger.exception(
+                    "Не удалось отправить изображение %s/%s в admin_channel_id=%s, media_id=%s",
+                    index,
+                    len(session.draft.media),
+                    admin_channel_id,
+                    media_id,
+                )
+
         self.logger.info(
-            "Заявка отправлена: chat_id=%s, topic=%s, urgency=%s",
+            "Заявка отправлена: chat_id=%s, topic=%s, urgency=%s, media=%s",
             chat_id,
             session.draft.topic,
             session.draft.urgency,
+            len(session.draft.media),
         )
         await self.storage.delete_session(chat_id)
         await self._send_message(chat_id, TICKET_SUBMITTED_SUCCESS_TEXT)

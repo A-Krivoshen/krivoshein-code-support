@@ -10,6 +10,7 @@ class TicketDraft(BaseModel):
     description: str = ""
     contact: str = ""
     urgency: str = ""
+    media: list[str] = Field(default_factory=list)
 
 
 class TicketSession(BaseModel):

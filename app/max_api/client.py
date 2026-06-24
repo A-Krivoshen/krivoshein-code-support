@@ -104,6 +104,23 @@ class MaxApiClient:
         )
         return self._parse_send_message_response(payload)
 
+    async def send_message_media(self, chat_id: int, media_id: str) -> SendMessageResponse:
+        body: dict[str, Any] = {
+            "attachments": [
+                {
+                    "type": "message_media",
+                    "payload": {"media_id": media_id},
+                }
+            ]
+        }
+        payload = await self._request(
+            "POST",
+            "/messages",
+            params={"chat_id": chat_id},
+            json=body,
+        )
+        return self._parse_send_message_response(payload)
+
     @staticmethod
     def _build_attachments(reply_markup: ReplyMarkup | None) -> list[dict[str, Any]]:
         if reply_markup is None:

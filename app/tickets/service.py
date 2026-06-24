@@ -12,13 +12,20 @@ URGENCY_EMOJI = {
 
 
 def format_summary(draft: TicketDraft) -> str:
-    return (
-        "Проверьте данные заявки перед отправкой:\n\n"
-        f"📌 Тема: {draft.topic}\n"
-        f"📝 Описание:\n{draft.description}\n"
-        f"📞 Контакт: {draft.contact}\n"
-        f"⚡ Срочность: {draft.urgency}"
+    lines = [
+        "Проверьте данные заявки перед отправкой:\n",
+        f"📌 Тема: {draft.topic}",
+        f"📝 Описание:\n{draft.description}",
+    ]
+    if draft.media:
+        lines.append(f"🖼 Прикреплено изображений: {len(draft.media)}")
+    lines.extend(
+        [
+            f"📞 Контакт: {draft.contact}",
+            f"⚡ Срочность: {draft.urgency}",
+        ]
     )
+    return "\n".join(lines)
 
 
 def format_admin_message(draft: TicketDraft, chat_id: int) -> str:
