@@ -6,8 +6,10 @@ Manual registration (one-time or after URL change):
     source venv/bin/activate
     python -m scripts.register_webhook
 
-Requires MAX_BOT_TOKEN and WEBHOOK_URL in .env.
+Requires MAX_BOT_TOKEN, WEBHOOK_URL and WEBHOOK_SECRET in .env.
 The public URL must be reachable over HTTPS on port 443.
+After adding or changing WEBHOOK_SECRET, re-run this script so MAX sends
+X-Max-Bot-Api-Secret on every webhook delivery.
 
 Alternative via curl:
 
@@ -16,7 +18,8 @@ Alternative via curl:
       -H "Content-Type: application/json" \\
       -d '{
         "url": "https://support.krivoshein.site/webhook",
-        "update_types": ["bot_started", "message_created", "message_callback"]
+        "update_types": ["bot_started", "message_created", "message_callback"],
+        "secret": "$WEBHOOK_SECRET"
       }'
 """
 
@@ -62,6 +65,10 @@ async def run() -> int:
         logger.error("WEBHOOK_URL не задан")
         return 1
 
+    if not settings.webhook_secret:
+        logger.error("WEBHOOK_SECRET не задан")
+        return 1
+
     client = MaxApiClient(settings.max_bot_token)
     try:
         bot = await client.get_me()
@@ -69,6 +76,7 @@ async def run() -> int:
 
         print(f"Webhook URL: {settings.webhook_url}")
         print(f"Типы событий: {', '.join(DEFAULT_UPDATE_TYPES)}")
+        print(f"Секрет: задан (длина {len(settings.webhook_secret)})")
         print()
 
         print("=== До регистрации ===")
@@ -76,7 +84,11 @@ async def run() -> int:
         _print_subscriptions(before)
         print()
 
-        result = await client.register_webhook(settings.webhook_url, DEFAULT_UPDATE_TYPES)
+        result = await client.register_webhook(
+            settings.webhook_url,
+            DEFAULT_UPDATE_TYPES,
+            secret=settings.webhook_secret,
+        )
         success = result.get("success")
         message = result.get("message")
 

@@ -74,12 +74,17 @@ class MaxApiClient:
         payload = await self._request("GET", "/me")
         return self._parse_bot_info(payload)
 
-    async def register_webhook(self, url: str, update_types: list[str]) -> dict[str, Any]:
-        return await self._request(
-            "POST",
-            "/subscriptions",
-            json={"url": url, "update_types": update_types},
-        )
+    async def register_webhook(
+        self,
+        url: str,
+        update_types: list[str],
+        *,
+        secret: str | None = None,
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {"url": url, "update_types": update_types}
+        if secret:
+            body["secret"] = secret
+        return await self._request("POST", "/subscriptions", json=body)
 
     async def get_webhook_subscriptions(self) -> dict[str, Any]:
         return await self._request("GET", "/subscriptions")

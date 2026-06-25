@@ -23,6 +23,15 @@ class Settings(BaseSettings):
         default="https://support.krivoshein.site/webhook",
         alias="WEBHOOK_URL",
     )
+    # Секрет webhook: MAX шлёт его в X-Max-Bot-Api-Secret при каждом POST.
+    # Без проверки любой, кто знает URL, может отправлять фейковые апдейты.
+    webhook_secret: str = Field(
+        ...,
+        alias="WEBHOOK_SECRET",
+        min_length=5,
+        max_length=256,
+        pattern=r"^[a-zA-Z0-9_-]+$",
+    )
 
     model_config = {
         "env_file": ".env",
