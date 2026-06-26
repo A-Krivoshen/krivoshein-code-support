@@ -8,6 +8,7 @@ from app.bot.parsing import (
     extract_callback_payload,
     extract_chat_id,
     extract_message_text,
+    is_reset_command,
     is_valid_contact,
 )
 from app.bot.keyboards import (
@@ -37,7 +38,6 @@ from app.bot.keyboards import (
 )
 from app.bot.states import TicketState
 from app.bot.texts import (
-    BTN_TO_MENU,
     TICKET_CANCELLED_TEXT,
     TICKET_CONTACT_INVALID_TEXT,
     TICKET_CONTACT_TEXT,
@@ -73,9 +73,6 @@ FAQ_MENU_TEXT = (
     "Частые вопросы по услугам: сайты, поддержка, реклама, боты и серверы.\n\n"
     "Выберите интересующий раздел — отвечу кратко, с ориентирами по срокам."
 )
-START_COMMAND = "/start"
-_MENU_COMMANDS = {START_COMMAND, "start", "старт", "меню", BTN_TO_MENU.lower()}
-
 TICKET_ADMIN_NOT_CONFIGURED_TEXT = (
     "Сейчас не удалось отправить заявку: админ-канал не настроен. Попробуйте позже."
 )
@@ -128,7 +125,7 @@ class BotRouter:
             return
 
         text = extract_message_text(update)
-        if _is_reset_command(text):
+        if is_reset_command(text):
             self.logger.info("Команда сброса от chat_id=%s: %s", chat_id, text.strip())
             await self._reset_to_main_menu(chat_id, reason="reset_command")
             return

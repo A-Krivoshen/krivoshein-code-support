@@ -3,6 +3,13 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.bot.texts import BTN_TO_MENU
+
+START_COMMAND = "/start"
+MENU_RESET_COMMANDS = frozenset(
+    {START_COMMAND, "start", "старт", "меню", BTN_TO_MENU.lower()}
+)
+
 _EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 _PHONE_RE = re.compile(r"^\+?[\d\s\-()]{7,20}$")
 
@@ -59,6 +66,12 @@ def extract_callback_payload(update: dict[str, Any]) -> str | None:
         return payload.strip()
 
     return None
+
+
+def is_reset_command(text: str | None) -> bool:
+    if not text:
+        return False
+    return text.strip().lower() in MENU_RESET_COMMANDS
 
 
 def is_valid_contact(value: str) -> bool:

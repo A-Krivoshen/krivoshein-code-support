@@ -4,6 +4,7 @@ from app.bot.parsing import (
     extract_callback_payload,
     extract_chat_id,
     extract_message_text,
+    is_reset_command,
     is_valid_contact,
 )
 
@@ -52,6 +53,17 @@ def test_extract_message_text_empty():
 def test_extract_callback_payload():
     update = {"callback": {"payload": " menu:ticket "}}
     assert extract_callback_payload(update) == "menu:ticket"
+
+
+def test_is_reset_command_start():
+    assert is_reset_command("/start") is True
+    assert is_reset_command("  МЕНЮ ") is True
+    assert is_reset_command("В меню") is True
+
+
+def test_is_reset_command_not_reset():
+    assert is_reset_command(None) is False
+    assert is_reset_command("опишите проблему") is False
 
 
 def test_is_valid_contact_email():
