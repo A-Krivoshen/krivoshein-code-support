@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 import logging
-import re
 from typing import Any
 
 from app.bot.faq import FAQ_ANSWERS, FAQ_PAYLOADS
+from app.bot.parsing import (
+    extract_callback_payload,
+    extract_chat_id,
+    extract_message_text,
+    is_valid_contact,
+)
 from app.bot.keyboards import (
     MENU_DOCS,
     MENU_FAQ,
@@ -56,7 +61,8 @@ from app.config import settings
 from app.max_api.client import MaxApiClient
 from app.max_api.exceptions import MaxApiError
 from app.max_api.types import ReplyMarkup
-from app.tickets.models import TicketDraft, TicketMedia, TicketSession
+from app.tickets.media import append_ticket_media, extract_ticket_media
+from app.tickets.models import TicketDraft, TicketSession
 from app.tickets.service import format_summary, send_ticket_to_admin
 from app.tickets.storage import TicketStorage
 
@@ -84,216 +90,6 @@ TICKET_CALLBACK_PAYLOADS = {
     TICKET_CONFIRM_CANCEL,
     TICKET_DESCRIPTION_NEXT,
 }
-
-_IMAGE_ATTACHMENT_TYPES = {"image", "photo"}
-_KEYBOARD_ATTACHMENT_TYPES = {"inline_keyboard"}
-
-_EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
-_PHONE_RE = re.compile(r"^\+?[\d\s\-()]{7,20}$")
-
-
-def extract_chat_id(update: dict[str, Any]) -> int | None:
-    chat_id = update.get("chat_id")
-    if isinstance(chat_id, int):
-        return chat_id
-
-    message = update.get("message")
-    if isinstance(message, dict):
-        recipient = message.get("recipient")
-        if isinstance(recipient, dict):
-            recipient_chat_id = recipient.get("chat_id")
-            if isinstance(recipient_chat_id, int):
-                return recipient_chat_id
-
-    callback = update.get("callback")
-    if isinstance(callback, dict):
-        callback_message = callback.get("message")
-        if isinstance(callback_message, dict):
-            recipient = callback_message.get("recipient")
-            if isinstance(recipient, dict):
-                recipient_chat_id = recipient.get("chat_id")
-                if isinstance(recipient_chat_id, int):
-                    return recipient_chat_id
-
-    return None
-
-
-def extract_message_text(update: dict[str, Any]) -> str | None:
-    message = update.get("message")
-    if not isinstance(message, dict):
-        return None
-
-    body = message.get("body")
-    if not isinstance(body, dict):
-        return None
-
-    text = body.get("text")
-    if isinstance(text, str) and text.strip():
-        return text.strip()
-
-    return None
-
-
-def _int_from_value(value: Any) -> int | None:
-    if isinstance(value, int):
-        return value
-    if isinstance(value, str) and value.isdigit():
-        return int(value)
-    return None
-
-
-def _token_from_value(value: Any) -> str | None:
-    if isinstance(value, str) and value.strip():
-        return value.strip()
-    return None
-
-
-def _extract_token_from_payload(payload: dict[str, Any]) -> str | None:
-    token = _token_from_value(payload.get("token"))
-    if token:
-        return token
-
-    photos = payload.get("photos")
-    if isinstance(photos, dict):
-        for photo_data in photos.values():
-            if not isinstance(photo_data, dict):
-                continue
-            token = _token_from_value(photo_data.get("token"))
-            if token:
-                return token
-
-    return None
-
-
-def _ticket_media_from_payload(payload: dict[str, Any]) -> TicketMedia | None:
-    token = _extract_token_from_payload(payload)
-    photo_id = _int_from_value(payload.get("photo_id"))
-    media_id = _int_from_value(payload.get("media_id"))
-
-    if token is None and photo_id is None and media_id is None:
-        return None
-
-    _logger.info(
-        "media parsed: photo_id=%s media_id=%s token_present=%s payload_keys=%s",
-        photo_id,
-        media_id,
-        bool(token),
-        sorted(payload.keys()),
-    )
-
-    return TicketMedia(photo_id=photo_id, media_id=media_id, token=token)
-
-
-def _ticket_media_from_media_item(item: Any) -> TicketMedia | None:
-    if isinstance(item, dict):
-        return _ticket_media_from_payload(item)
-
-    if isinstance(item, str):
-        stripped = item.strip()
-        if not stripped:
-            return None
-        if stripped.isdigit():
-            media_id = int(stripped)
-            return TicketMedia(photo_id=media_id, media_id=media_id)
-        return TicketMedia(token=stripped)
-
-    media_id = _int_from_value(item)
-    if media_id is not None:
-        return TicketMedia(photo_id=media_id, media_id=media_id)
-
-    return None
-
-
-def _ticket_media_from_attachment(item: dict[str, Any]) -> TicketMedia | None:
-    att_type = str(item.get("type", ""))
-    if att_type in _KEYBOARD_ATTACHMENT_TYPES:
-        return None
-    if att_type not in _IMAGE_ATTACHMENT_TYPES:
-        return None
-
-    payload = item.get("payload")
-    if isinstance(payload, dict):
-        parsed = _ticket_media_from_payload(payload)
-        if parsed is not None:
-            return parsed
-
-    token = _token_from_value(item.get("token"))
-    photo_id = _int_from_value(item.get("photo_id"))
-    media_id = _int_from_value(item.get("media_id"))
-    if token is None and photo_id is None and media_id is None:
-        return None
-
-    return TicketMedia(photo_id=photo_id, media_id=media_id, token=token)
-
-
-def _append_ticket_media(draft: TicketDraft, item: TicketMedia) -> bool:
-    if not item.is_forwardable():
-        return False
-
-    for index, existing in enumerate(draft.media):
-        if not existing.matches(item):
-            continue
-
-        merged = existing.merge(item)
-        if merged == existing:
-            return False
-
-        draft.media[index] = merged
-        return True
-
-    draft.media.append(item)
-    return True
-
-
-def extract_ticket_media(update: dict[str, Any]) -> list[TicketMedia]:
-    media_items: list[TicketMedia] = []
-
-    media = update.get("media")
-    if isinstance(media, list):
-        for item in media:
-            parsed = _ticket_media_from_media_item(item)
-            if parsed is not None and not any(existing.matches(parsed) for existing in media_items):
-                media_items.append(parsed)
-
-    message = update.get("message")
-    if isinstance(message, dict):
-        body = message.get("body")
-        if isinstance(body, dict):
-            attachments = body.get("attachments")
-            if isinstance(attachments, list):
-                for attachment in attachments:
-                    if not isinstance(attachment, dict):
-                        continue
-                    parsed = _ticket_media_from_attachment(attachment)
-                    if parsed is not None and not any(
-                        existing.matches(parsed) for existing in media_items
-                    ):
-                        media_items.append(parsed)
-
-    return media_items
-
-
-def extract_callback_payload(update: dict[str, Any]) -> str | None:
-    callback = update.get("callback")
-    if not isinstance(callback, dict):
-        return None
-
-    payload = callback.get("payload")
-    if isinstance(payload, str) and payload.strip():
-        return payload.strip()
-
-    return None
-
-
-def is_valid_contact(value: str) -> bool:
-    normalized = value.strip()
-    if not normalized:
-        return False
-    if _EMAIL_RE.match(normalized):
-        return True
-    digits = re.sub(r"\D", "", normalized)
-    return len(digits) >= 10 and _PHONE_RE.match(normalized) is not None
-
 
 class BotRouter:
     def __init__(self, client: MaxApiClient, storage: TicketStorage) -> None:
@@ -540,7 +336,7 @@ class BotRouter:
                 added = 0
                 rejected = 0
                 for media_item in media_items:
-                    if _append_ticket_media(session.draft, media_item):
+                    if append_ticket_media(session.draft, media_item):
                         added += 1
                     elif media_item.is_valid():
                         rejected += 1
