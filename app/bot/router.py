@@ -87,7 +87,6 @@ TICKET_CALLBACK_PAYLOADS = {
     *TICKET_TOPIC_LABELS,
     *TICKET_URGENCY_LABELS,
     TICKET_CONFIRM_SEND,
-    TICKET_CONFIRM_CANCEL,
     TICKET_DESCRIPTION_NEXT,
 }
 
@@ -121,9 +120,7 @@ class BotRouter:
             self.logger.warning("bot_started без chat_id, меню не отправлено")
             return
 
-        await self.storage.delete_session(chat_id)
-        self.logger.info("Пользователь запустил бота: chat_id=%s", chat_id)
-        await self._send_main_menu(chat_id)
+        await self._reset_to_main_menu(chat_id, reason="bot_started")
 
     async def _handle_message_created(self, update: dict[str, Any], chat_id: int | None) -> None:
         if chat_id is None:
@@ -131,10 +128,9 @@ class BotRouter:
             return
 
         text = extract_message_text(update)
-        if text and text.lower() == START_COMMAND:
-            self.logger.info("Команда /start от chat_id=%s", chat_id)
-            await self.storage.delete_session(chat_id)
-            await self._send_main_menu(chat_id)
+        if _is_reset_command(text):
+            self.logger.info("Команда сброса от chat_id=%s: %s", chat_id, text.strip())
+            await self._reset_to_main_menu(chat_id, reason="reset_command")
             return
 
         if await self.storage.has_active_ticket_flow(chat_id):
@@ -146,13 +142,6 @@ class BotRouter:
     async def _handle_idle_message(self, chat_id: int, text: str | None) -> None:
         if text:
             stripped = text.strip()
-            normalized = stripped.lower()
-
-            if normalized in _MENU_COMMANDS:
-                self.logger.info("Команда меню от chat_id=%s: %s", chat_id, stripped)
-                await self.storage.delete_session(chat_id)
-                await self._send_main_menu(chat_id)
-                return
 
             for payload, label in MENU_LABELS.items():
                 if stripped == label:
@@ -186,7 +175,7 @@ class BotRouter:
             return
 
         if payload == MENU_MAIN:
-            await self._send_main_menu(chat_id)
+            await self._reset_to_main_menu(chat_id, reason="menu_main")
             return
 
         await self._send_message(chat_id, "Эта кнопка пока не настроена.")
@@ -199,6 +188,18 @@ class BotRouter:
             return
 
         self.logger.info("Нажата кнопка: chat_id=%s, payload=%s", chat_id, payload)
+
+        if payload == TICKET_CONFIRM_CANCEL:
+            await self._reset_to_main_menu(
+                chat_id,
+                reason="cancel_button",
+                show_cancelled_message=True,
+            )
+            return
+
+        if payload == MENU_MAIN:
+            await self._reset_to_main_menu(chat_id, reason="menu_main")
+            return
 
         if payload in TICKET_CALLBACK_PAYLOADS:
             await self._handle_ticket_callback(chat_id, payload)
@@ -315,10 +316,6 @@ class BotRouter:
                 await self._send_message(chat_id, "Сначала заполните все поля заявки.")
                 return
             await self._submit_ticket(chat_id, session)
-            return
-
-        if payload == TICKET_CONFIRM_CANCEL:
-            await self._cancel_ticket(chat_id)
             return
 
     async def _handle_ticket_message(self, chat_id: int, update: dict[str, Any]) -> None:
@@ -461,9 +458,17 @@ class BotRouter:
             await self._send_message(chat_id, TICKET_SUBMITTED_SUCCESS_TEXT)
         await self._send_main_menu(chat_id)
 
-    async def _cancel_ticket(self, chat_id: int) -> None:
+    async def _reset_to_main_menu(
+        self,
+        chat_id: int,
+        *,
+        reason: str,
+        show_cancelled_message: bool = False,
+    ) -> None:
         await self.storage.delete_session(chat_id)
-        await self._send_message(chat_id, TICKET_CANCELLED_TEXT)
+        self.logger.info("Сброс сессии: chat_id=%s, reason=%s", chat_id, reason)
+        if show_cancelled_message:
+            await self._send_message(chat_id, TICKET_CANCELLED_TEXT)
         await self._send_main_menu(chat_id)
 
     async def _show_faq_menu(self, chat_id: int) -> None:
