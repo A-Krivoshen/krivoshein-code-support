@@ -103,10 +103,22 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail="Update must be a JSON object")
 
         router: BotRouter = request.app.state.router
+        update_type = update.get("update_type", "unknown")
+        chat_id = update.get("chat_id")
         try:
             await router.handle_update(update)
+        except MaxApiError:
+            logger.exception(
+                "Ошибка MAX API при обработке апдейта: update_type=%s, chat_id=%s",
+                update_type,
+                chat_id,
+            )
         except Exception:
-            logger.exception("Ошибка обработки апдейта: update_type=%s", update.get("update_type"))
+            logger.exception(
+                "Непредвиденная ошибка при обработке апдейта: update_type=%s, chat_id=%s",
+                update_type,
+                chat_id,
+            )
         return {"ok": True}
 
     return application

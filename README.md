@@ -53,17 +53,12 @@
    python -m scripts.register_webhook
    ```
 
-   После добавления или смены секрета перезапустите uvicorn и заново выполните регистрацию —
-   иначе MAX не будет слать заголовок `X-Max-Bot-Api-Secret`, и запросы получат `403 Forbidden`.
+## Тесты
 
-   Локальная отладка webhook (curl):
-
-   ```bash
-   curl -X POST http://127.0.0.1:8000/webhook \
-     -H "Content-Type: application/json" \
-     -H "X-Max-Bot-Api-Secret: $WEBHOOK_SECRET" \
-     -d '{"update_type":"bot_started","chat_id":123}'
-   ```
+```bash
+pip install -r requirements-dev.txt
+MAX_BOT_TOKEN=test-token pytest
+```
 
 ## Деплой
 
