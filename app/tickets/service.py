@@ -17,6 +17,11 @@ URGENCY_EMOJI = {
 }
 
 
+def _format_urgency(urgency: str) -> tuple[str, str]:
+    label = urgency or "—"
+    return label, URGENCY_EMOJI.get(label, "⚪")
+
+
 @dataclass(slots=True)
 class TicketSendResult:
     text_sent: bool
@@ -34,8 +39,7 @@ def _screenshot_label(count: int) -> str:
 
 
 def format_summary(draft: TicketDraft) -> str:
-    urgency = draft.urgency or "—"
-    urgency_emoji = URGENCY_EMOJI.get(urgency, "⚪")
+    urgency, urgency_emoji = _format_urgency(draft.urgency)
     lines = [
         "📋 Ваша заявка",
         "",
@@ -57,8 +61,7 @@ def format_summary(draft: TicketDraft) -> str:
 
 
 def format_admin_message(draft: TicketDraft, chat_id: int) -> str:
-    urgency = draft.urgency or "—"
-    urgency_emoji = URGENCY_EMOJI.get(urgency, "⚪")
+    urgency, urgency_emoji = _format_urgency(draft.urgency)
     created_label = datetime.now(UTC).strftime("%d.%m.%Y %H:%M")
 
     lines = [
