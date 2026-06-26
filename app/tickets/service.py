@@ -4,6 +4,7 @@ import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from app.bot.texts import TICKET_CONFIRM_TEXT
 from app.max_api.client import MaxApiClient
 from app.max_api.exceptions import MaxApiError
 from app.tickets.models import TicketDraft, TicketMedia
@@ -54,7 +55,7 @@ def format_summary(draft: TicketDraft) -> str:
         [
             f"📞 {draft.contact}",
             "",
-            "Всё верно? Нажмите «Отправить» 👇",
+            TICKET_CONFIRM_TEXT,
         ]
     )
     return "\n".join(lines)

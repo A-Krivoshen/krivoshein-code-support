@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from app.bot.texts import TICKET_CONFIRM_TEXT
 from app.max_api.exceptions import MaxApiRequestError
 from app.tickets.models import TicketDraft, TicketMedia
 from app.tickets.service import format_admin_message, format_summary, send_ticket_to_admin
@@ -21,6 +22,7 @@ def test_format_summary_includes_media_count():
     assert "Техподдержка" in text
     assert "2 скриншота" in text
     assert "user@example.com" in text
+    assert TICKET_CONFIRM_TEXT in text
 
 
 def test_format_admin_message_contains_chat_id():

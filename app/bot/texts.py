@@ -67,7 +67,7 @@ TICKET_CONTACT_INVALID_TEXT = (
 
 TICKET_URGENCY_TEXT = "Насколько срочно нужно решить вопрос?"
 
-TICKET_CONFIRM_TEXT = "Всё верно? Нажмите «Отправить» 👇"
+TICKET_CONFIRM_TEXT = "Всё верно? Если данные правильные — нажмите «Отправить» 👇"
 
 TICKET_INVALID_INPUT_TEXT = (
     "Пожалуйста, используйте кнопки ниже или введите данные для текущего шага."
