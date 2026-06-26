@@ -43,6 +43,13 @@
    python -m scripts.register_webhook
    ```
 
+## Тесты
+
+```bash
+pip install -r requirements-dev.txt
+MAX_BOT_TOKEN=test-token pytest
+```
+
 ## Деплой
 
 Пример systemd-юнита — `app/webhook.service.example`. После запуска сервиса выполните регистрацию webhook (шаг 5 выше). Публичный URL должен быть доступен по HTTPS на порту 443 (прокси перед uvicorn).
