@@ -20,6 +20,26 @@ CREATE TABLE IF NOT EXISTS ticket_sessions (
     draft_json TEXT NOT NULL DEFAULT '{}',
     updated_at TEXT NOT NULL
 );
+
+-- Лог вызовов LLM для rate-limit (скользящее окно 1 час)
+CREATE TABLE IF NOT EXISTS llm_request_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_llm_request_log_chat_created
+    ON llm_request_log (chat_id, created_at);
+
+-- История idle-диалога с LLM (user/assistant)
+CREATE TABLE IF NOT EXISTS chat_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id INTEGER NOT NULL,
+    role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_chat_history_chat_created
+    ON chat_history (chat_id, created_at);
 """
 
 

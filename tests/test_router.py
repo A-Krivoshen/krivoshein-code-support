@@ -15,7 +15,9 @@ from app.bot.keyboards import (
 )
 from app.bot.router import LLM_IDLE_FALLBACK_TEXT, BotRouter
 from app.bot.states import TicketState
-from app.bot.texts import TICKET_HINT_TOPIC_TEXT
+from app.bot.texts import LLM_RATE_LIMIT_TEXT, TICKET_HINT_TOPIC_TEXT
+from app.llm.memory import ChatMemory
+from app.llm.service import LlmReplyResult
 from app.tickets.models import TicketDraft, TicketSession
 from app.tickets.storage import TicketStorage
 
@@ -161,7 +163,9 @@ async def test_submit_ticket_without_admin_channel(router, storage, api_client, 
 async def test_idle_free_text_uses_llm_when_enabled(api_client, storage, monkeypatch):
     monkeypatch.setattr("app.bot.router.settings.llm_enabled", True)
     llm_service = AsyncMock()
-    llm_service.reply = AsyncMock(return_value="Ответ про WordPress")
+    llm_service.reply = AsyncMock(
+        return_value=LlmReplyResult(text="Ответ про WordPress"),
+    )
     router = BotRouter(api_client, storage, llm_service=llm_service)
 
     await router.handle_update(
@@ -172,7 +176,10 @@ async def test_idle_free_text_uses_llm_when_enabled(api_client, storage, monkeyp
         }
     )
 
-    llm_service.reply.assert_awaited_once_with("Сколько стоит поддержка WordPress?")
+    llm_service.reply.assert_awaited_once_with(
+        "Сколько стоит поддержка WordPress?",
+        chat_id=20,
+    )
     api_client.send_message.assert_awaited()
     args = api_client.send_message.await_args
     assert args.args[0] == 20
@@ -187,7 +194,7 @@ async def test_idle_free_text_uses_llm_when_enabled(api_client, storage, monkeyp
 async def test_idle_free_text_llm_none_uses_fallback(api_client, storage, monkeypatch):
     monkeypatch.setattr("app.bot.router.settings.llm_enabled", True)
     llm_service = AsyncMock()
-    llm_service.reply = AsyncMock(return_value=None)
+    llm_service.reply = AsyncMock(return_value=LlmReplyResult(error=True))
     router = BotRouter(api_client, storage, llm_service=llm_service)
 
     await router.handle_update(
@@ -206,7 +213,7 @@ async def test_idle_free_text_llm_none_uses_fallback(api_client, storage, monkey
 async def test_idle_free_text_skips_llm_when_disabled(api_client, storage, monkeypatch):
     monkeypatch.setattr("app.bot.router.settings.llm_enabled", False)
     llm_service = AsyncMock()
-    llm_service.reply = AsyncMock(return_value="не должен вызваться")
+    llm_service.reply = AsyncMock(return_value=LlmReplyResult(text="не должен вызваться"))
     router = BotRouter(api_client, storage, llm_service=llm_service)
 
     await router.handle_update(
@@ -219,3 +226,44 @@ async def test_idle_free_text_skips_llm_when_disabled(api_client, storage, monke
 
     llm_service.reply.assert_not_awaited()
     api_client.send_message.assert_awaited()
+
+
+async def test_idle_llm_rate_limited_message(api_client, storage, monkeypatch):
+    monkeypatch.setattr("app.bot.router.settings.llm_enabled", True)
+    llm_service = AsyncMock()
+    llm_service.reply = AsyncMock(return_value=LlmReplyResult(rate_limited=True))
+    router = BotRouter(api_client, storage, llm_service=llm_service)
+
+    await router.handle_update(
+        {
+            "update_type": "message_created",
+            "chat_id": 23,
+            "message": {"body": {"text": "ещё вопрос"}},
+        }
+    )
+
+    args = api_client.send_message.await_args
+    assert args.args[1] == LLM_RATE_LIMIT_TEXT
+
+
+async def test_start_ticket_prefills_from_history(api_client, storage, db_connection, monkeypatch):
+    monkeypatch.setattr("app.bot.router.settings.llm_history_ttl_hours", 24)
+    memory = ChatMemory(db_connection)
+    await memory.append_message(30, "user", "Нужно настроить VPS с nginx и docker")
+    await memory.append_message(30, "assistant", "Могу помочь с VPS.")
+
+    router = BotRouter(api_client, storage, chat_memory=memory)
+    await router.handle_update(
+        {
+            "update_type": "message_callback",
+            "chat_id": 30,
+            "callback": {"payload": MENU_TICKET},
+        }
+    )
+
+    session = await storage.get_session(30)
+    assert session is not None
+    assert session.state == TicketState.TICKET_DESCRIPTION
+    assert session.draft.topic == "VPS / Серверы"
+    assert "VPS" in session.draft.description or "nginx" in session.draft.description.lower()
+    assert "VPS / Серверы" in api_client.send_message.await_args.args[1]

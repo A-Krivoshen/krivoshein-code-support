@@ -47,6 +47,12 @@ class Settings(BaseSettings):
     llm_timeout: float = Field(default=10.0, alias="LLM_TIMEOUT")
     llm_max_tokens: int = Field(default=500, alias="LLM_MAX_TOKENS")
     llm_temperature: float = Field(default=0.3, alias="LLM_TEMPERATURE")
+    # Лимит вызовов LLM на chat_id за скользящий час
+    llm_rate_limit_per_hour: int = Field(default=8, alias="LLM_RATE_LIMIT_PER_HOUR")
+    # Сколько пар user+assistant держать в контексте
+    llm_history_pairs: int = Field(default=5, alias="LLM_HISTORY_PAIRS")
+    # TTL истории диалога (часы)
+    llm_history_ttl_hours: int = Field(default=24, alias="LLM_HISTORY_TTL_HOURS")
 
     model_config = {
         "env_file": ".env",

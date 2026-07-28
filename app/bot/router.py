@@ -43,6 +43,7 @@ from app.bot.texts import (
     TICKET_CONTACT_INVALID_TEXT,
     TICKET_CONTACT_TEXT,
     TICKET_DESCRIPTION_EMPTY_TEXT,
+    TICKET_DESCRIPTION_PREFILLED_TEXT,
     TICKET_DESCRIPTION_PROMPT_TEXT,
     TICKET_DESCRIPTION_SAVED_TEXT,
     TICKET_DESCRIPTION_TEXT,
@@ -56,6 +57,8 @@ from app.bot.texts import (
     TICKET_MEDIA_SAVED_TEXT,
     TICKET_SUBMITTED_MEDIA_PARTIAL_TEXT,
     TICKET_SUBMITTED_SUCCESS_TEXT,
+    TICKET_TOPIC_PREFILLED_HINT,
+    LLM_RATE_LIMIT_TEXT,
     OTHER_MENU_TEXT,
     OTHER_TASK_TEXT,
     TICKET_TOPIC_TEXT,
@@ -63,7 +66,9 @@ from app.bot.texts import (
     WELCOME_TEXT,
 )
 from app.config import settings
+from app.llm.memory import ChatMemory
 from app.llm.service import LlmService
+from app.llm.topic_infer import build_description_from_user_texts, infer_topic_label
 from app.max_api.client import MaxApiClient
 from app.max_api.exceptions import MaxApiError
 from app.max_api.types import ReplyMarkup
@@ -103,10 +108,12 @@ class BotRouter:
         client: MaxApiClient,
         storage: TicketStorage,
         llm_service: LlmService | None = None,
+        chat_memory: ChatMemory | None = None,
     ) -> None:
         self.client = client
         self.storage = storage
         self.llm_service = llm_service
+        self.chat_memory = chat_memory
         self.logger = logging.getLogger(__name__)
 
     async def handle_update(self, update: dict[str, Any]) -> None:
@@ -173,11 +180,18 @@ class BotRouter:
                 and self.llm_service is not None
                 and stripped
             ):
-                answer = await self.llm_service.reply(stripped)
-                if answer:
+                result = await self.llm_service.reply(stripped, chat_id=chat_id)
+                if result.rate_limited:
                     await self._send_message(
                         chat_id,
-                        answer,
+                        LLM_RATE_LIMIT_TEXT,
+                        reply_markup=get_main_menu(),
+                    )
+                    return
+                if result.text:
+                    await self._send_message(
+                        chat_id,
+                        result.text,
                         reply_markup=get_llm_reply_keyboard(),
                     )
                     return
@@ -310,10 +324,72 @@ class BotRouter:
         await self._send_message(chat_id, TICKET_HINT_STEP_TEXT)
 
     async def _start_ticket_flow(self, chat_id: int) -> None:
-        session = TicketSession(chat_id=chat_id, state=TicketState.TICKET_TOPIC, draft=TicketDraft())
+        """Старт FSM заявки. При недавнем LLM-разговоре — soft prefill темы/описания."""
+        draft = TicketDraft()
+        topic_label: str | None = None
+        description = ""
+
+        if self.chat_memory is not None:
+            try:
+                user_texts = await self.chat_memory.get_recent_user_texts(
+                    chat_id,
+                    limit=3,
+                    ttl_hours=settings.llm_history_ttl_hours,
+                )
+                description = build_description_from_user_texts(user_texts)
+                topic_label = infer_topic_label(*user_texts)
+            except Exception:
+                self.logger.exception(
+                    "Не удалось прочитать историю для prefill chat_id=%s",
+                    chat_id,
+                )
+
+        if description:
+            draft.description = description
+        if topic_label:
+            draft.topic = topic_label
+
+        if topic_label and description:
+            # Уверены в теме — сразу на описание с prefill
+            session = TicketSession(
+                chat_id=chat_id,
+                state=TicketState.TICKET_DESCRIPTION,
+                draft=draft,
+            )
+            await self.storage.save_session(session)
+            self.logger.info(
+                "Старт заявки с prefill: chat_id=%s topic=%s desc_len=%s",
+                chat_id,
+                topic_label,
+                len(description),
+            )
+            await self._send_message(
+                chat_id,
+                TICKET_DESCRIPTION_PREFILLED_TEXT.format(topic=topic_label),
+                reply_markup=get_ticket_description_keyboard(),
+            )
+            return
+
+        # Тема неясна — выбор темы; описание (если есть) уже в draft
+        session = TicketSession(
+            chat_id=chat_id,
+            state=TicketState.TICKET_TOPIC,
+            draft=draft,
+        )
         await self.storage.save_session(session)
-        self.logger.info("Старт сценария заявки: chat_id=%s", chat_id)
-        await self._send_message(chat_id, TICKET_TOPIC_TEXT, reply_markup=get_ticket_topic_keyboard())
+        self.logger.info(
+            "Старт сценария заявки: chat_id=%s prefilled_desc=%s",
+            chat_id,
+            bool(description),
+        )
+        intro = TICKET_TOPIC_TEXT
+        if description:
+            intro = f"{TICKET_TOPIC_TEXT}\n\n{TICKET_TOPIC_PREFILLED_HINT}"
+        await self._send_message(
+            chat_id,
+            intro,
+            reply_markup=get_ticket_topic_keyboard(),
+        )
 
     async def _start_other_task_flow(self, chat_id: int) -> None:
         session = TicketSession(
@@ -346,9 +422,15 @@ class BotRouter:
             session.draft.topic = TICKET_TOPIC_LABELS[payload]
             session.state = TicketState.TICKET_DESCRIPTION
             await self.storage.save_session(session)
+            if session.draft.description.strip():
+                prompt = TICKET_DESCRIPTION_PREFILLED_TEXT.format(
+                    topic=session.draft.topic,
+                )
+            else:
+                prompt = TICKET_DESCRIPTION_TEXT
             await self._send_message(
                 chat_id,
-                TICKET_DESCRIPTION_TEXT,
+                prompt,
                 reply_markup=get_ticket_description_keyboard(),
             )
             return
@@ -515,6 +597,12 @@ class BotRouter:
             result.media_failed,
         )
         await self.storage.delete_session(chat_id)
+        # История idle-диалога «поглощена» заявкой — очищаем, чтобы не тащить старый контекст
+        if self.chat_memory is not None:
+            try:
+                await self.chat_memory.clear_history(chat_id)
+            except Exception:
+                self.logger.exception("Не удалось очистить history после заявки chat_id=%s", chat_id)
         if result.media_total > 0 and result.media_failed > 0:
             await self._send_message(chat_id, TICKET_SUBMITTED_MEDIA_PARTIAL_TEXT)
         else:
