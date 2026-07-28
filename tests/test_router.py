@@ -10,9 +10,12 @@ from app.bot.keyboards import (
     MENU_TICKET,
     TICKET_CONFIRM_SEND,
     TICKET_TOPIC_SUPPORT,
+    TICKET_TOPIC_VPS,
+    TICKET_TOPIC_WORDPRESS,
 )
 from app.bot.router import LLM_IDLE_FALLBACK_TEXT, BotRouter
 from app.bot.states import TicketState
+from app.bot.texts import TICKET_HINT_TOPIC_TEXT
 from app.tickets.models import TicketDraft, TicketSession
 from app.tickets.storage import TicketStorage
 
@@ -63,14 +66,66 @@ async def test_ticket_topic_callback_advances_state(router, storage, api_client)
         {
             "update_type": "message_callback",
             "chat_id": 12,
-            "callback": {"payload": TICKET_TOPIC_SUPPORT},
+            "callback": {"payload": TICKET_TOPIC_WORDPRESS},
         }
     )
 
     session = await storage.get_session(12)
     assert session is not None
     assert session.state == TicketState.TICKET_DESCRIPTION
-    assert session.draft.topic == "Техподдержка"
+    assert session.draft.topic == "WordPress / Поддержка сайта"
+
+
+async def test_legacy_topic_payload_still_works(router, storage, api_client):
+    await storage.save_session(
+        TicketSession(
+            chat_id=14,
+            state=TicketState.TICKET_TOPIC,
+            draft=TicketDraft(),
+        )
+    )
+
+    await router.handle_update(
+        {
+            "update_type": "message_callback",
+            "chat_id": 14,
+            "callback": {"payload": TICKET_TOPIC_SUPPORT},
+        }
+    )
+
+    session = await storage.get_session(14)
+    assert session is not None
+    assert session.state == TicketState.TICKET_DESCRIPTION
+    assert session.draft.topic == "WordPress / Поддержка сайта"
+
+
+async def test_ticket_topic_free_text_sends_soft_hint(router, storage, api_client):
+    await storage.save_session(
+        TicketSession(
+            chat_id=15,
+            state=TicketState.TICKET_TOPIC,
+            draft=TicketDraft(),
+        )
+    )
+
+    await router.handle_update(
+        {
+            "update_type": "message_created",
+            "chat_id": 15,
+            "message": {"body": {"text": "нужен VPS под WordPress"}},
+        }
+    )
+
+    session = await storage.get_session(15)
+    assert session is not None
+    assert session.state == TicketState.TICKET_TOPIC
+    args = api_client.send_message.await_args
+    assert args.args[1] == TICKET_HINT_TOPIC_TEXT
+    markup = args.kwargs.get("reply_markup")
+    assert markup is not None
+    payloads = {btn["payload"] for row in markup["payload"]["buttons"] for btn in row}
+    assert TICKET_TOPIC_VPS in payloads
+    assert TICKET_TOPIC_WORDPRESS in payloads
 
 
 async def test_submit_ticket_without_admin_channel(router, storage, api_client, monkeypatch):

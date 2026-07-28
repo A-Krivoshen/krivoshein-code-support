@@ -46,6 +46,10 @@ from app.bot.texts import (
     TICKET_DESCRIPTION_PROMPT_TEXT,
     TICKET_DESCRIPTION_SAVED_TEXT,
     TICKET_DESCRIPTION_TEXT,
+    TICKET_HINT_CONFIRM_TEXT,
+    TICKET_HINT_STEP_TEXT,
+    TICKET_HINT_TOPIC_TEXT,
+    TICKET_HINT_URGENCY_TEXT,
     TICKET_INVALID_INPUT_TEXT,
     TICKET_MEDIA_NOT_HERE_TEXT,
     TICKET_MEDIA_REJECTED_TEXT,
@@ -252,10 +256,11 @@ class BotRouter:
             return
 
         if await self.storage.has_active_ticket_flow(chat_id):
-            await self._send_message(
-                chat_id,
-                TICKET_INVALID_INPUT_TEXT,
-            )
+            session = await self.storage.get_session(chat_id)
+            if session is not None:
+                await self._send_ticket_step_hint(chat_id, session.state)
+            else:
+                await self._send_message(chat_id, TICKET_INVALID_INPUT_TEXT)
             return
 
         if payload and payload in MENU_LABELS:
@@ -263,6 +268,46 @@ class BotRouter:
             return
 
         await self._send_message(chat_id, "Эта кнопка пока не настроена.")
+
+    async def _send_ticket_step_hint(self, chat_id: int, state: TicketState) -> None:
+        """Мягко напомнить текущий шаг FSM и повторить нужную клавиатуру."""
+        if state == TicketState.TICKET_TOPIC:
+            await self._send_message(
+                chat_id,
+                TICKET_HINT_TOPIC_TEXT,
+                reply_markup=get_ticket_topic_keyboard(),
+            )
+            return
+        if state == TicketState.TICKET_DESCRIPTION:
+            await self._send_message(
+                chat_id,
+                TICKET_DESCRIPTION_PROMPT_TEXT,
+                reply_markup=get_ticket_description_keyboard(),
+            )
+            return
+        if state == TicketState.TICKET_CONTACT:
+            await self._send_message(
+                chat_id,
+                TICKET_CONTACT_TEXT,
+                reply_markup=get_ticket_nav_keyboard(),
+            )
+            return
+        if state == TicketState.TICKET_URGENCY:
+            await self._send_message(
+                chat_id,
+                TICKET_HINT_URGENCY_TEXT,
+                reply_markup=get_ticket_urgency_keyboard(),
+            )
+            return
+        if state == TicketState.TICKET_CONFIRM:
+            await self._send_message(
+                chat_id,
+                TICKET_HINT_CONFIRM_TEXT,
+                reply_markup=get_ticket_confirm_keyboard(),
+            )
+            return
+
+        await self._send_message(chat_id, TICKET_HINT_STEP_TEXT)
 
     async def _start_ticket_flow(self, chat_id: int) -> None:
         session = TicketSession(chat_id=chat_id, state=TicketState.TICKET_TOPIC, draft=TicketDraft())
@@ -295,7 +340,7 @@ class BotRouter:
 
         if payload in TICKET_TOPIC_LABELS:
             if session.state != TicketState.TICKET_TOPIC:
-                await self._send_message(chat_id, TICKET_INVALID_INPUT_TEXT)
+                await self._send_ticket_step_hint(chat_id, session.state)
                 return
 
             session.draft.topic = TICKET_TOPIC_LABELS[payload]
@@ -310,7 +355,7 @@ class BotRouter:
 
         if payload == TICKET_DESCRIPTION_NEXT:
             if session.state != TicketState.TICKET_DESCRIPTION:
-                await self._send_message(chat_id, TICKET_INVALID_INPUT_TEXT)
+                await self._send_ticket_step_hint(chat_id, session.state)
                 return
 
             if not session.draft.description.strip():
@@ -332,7 +377,7 @@ class BotRouter:
 
         if payload in TICKET_URGENCY_LABELS:
             if session.state != TicketState.TICKET_URGENCY:
-                await self._send_message(chat_id, TICKET_INVALID_INPUT_TEXT)
+                await self._send_ticket_step_hint(chat_id, session.state)
                 return
 
             session.draft.urgency = TICKET_URGENCY_LABELS[payload]
@@ -347,7 +392,7 @@ class BotRouter:
 
         if payload == TICKET_CONFIRM_SEND:
             if session.state != TicketState.TICKET_CONFIRM:
-                await self._send_message(chat_id, "Сначала заполните все поля заявки.")
+                await self._send_ticket_step_hint(chat_id, session.state)
                 return
             await self._submit_ticket(chat_id, session)
             return
@@ -417,12 +462,12 @@ class BotRouter:
                 await self._send_message(chat_id, "Пожалуйста, отправьте текстовое сообщение.")
             return
 
-        if session.state == TicketState.TICKET_TOPIC:
-            await self._send_message(
-                chat_id,
-                TICKET_INVALID_INPUT_TEXT,
-                reply_markup=get_ticket_topic_keyboard(),
-            )
+        if session.state in {
+            TicketState.TICKET_TOPIC,
+            TicketState.TICKET_URGENCY,
+            TicketState.TICKET_CONFIRM,
+        }:
+            await self._send_ticket_step_hint(chat_id, session.state)
             return
 
         if session.state == TicketState.TICKET_CONTACT:
@@ -441,22 +486,6 @@ class BotRouter:
                 chat_id,
                 TICKET_URGENCY_TEXT,
                 reply_markup=get_ticket_urgency_keyboard(),
-            )
-            return
-
-        if session.state == TicketState.TICKET_URGENCY:
-            await self._send_message(
-                chat_id,
-                TICKET_INVALID_INPUT_TEXT,
-                reply_markup=get_ticket_urgency_keyboard(),
-            )
-            return
-
-        if session.state == TicketState.TICKET_CONFIRM:
-            await self._send_message(
-                chat_id,
-                TICKET_INVALID_INPUT_TEXT,
-                reply_markup=get_ticket_confirm_keyboard(),
             )
             return
 

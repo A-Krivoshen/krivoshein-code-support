@@ -27,10 +27,18 @@ MENU_MAIN = "menu:main"
 SITE_URL = "https://krivoshein.site/"
 CONTACT_URL = "https://krivoshein.site/contacts/"
 
+# Актуальные payload тем заявки
+TICKET_TOPIC_WORDPRESS = "ticket:topic:wordpress"
+TICKET_TOPIC_VPS = "ticket:topic:vps"
+TICKET_TOPIC_BOTS = "ticket:topic:bots"
+TICKET_TOPIC_DIRECT = "ticket:topic:direct"
+TICKET_TOPIC_LANDING = "ticket:topic:landing"
+TICKET_TOPIC_OTHER = "ticket:topic:other"
+
+# Устаревшие payload (кнопки в старых сообщениях) — обрабатываем для совместимости
 TICKET_TOPIC_SUPPORT = "ticket:topic:support"
 TICKET_TOPIC_WEBSITE = "ticket:topic:website"
 TICKET_TOPIC_ADS = "ticket:topic:ads"
-TICKET_TOPIC_OTHER = "ticket:topic:other"
 
 TICKET_URGENCY_NORMAL = "ticket:urgency:normal"
 TICKET_URGENCY_URGENT = "ticket:urgency:urgent"
@@ -47,12 +55,29 @@ MENU_LABELS = {
     MENU_OTHER: "Другое",
 }
 
+# Подписи тем (legacy payload мапятся на актуальные названия)
 TICKET_TOPIC_LABELS = {
-    TICKET_TOPIC_SUPPORT: "Техподдержка",
-    TICKET_TOPIC_WEBSITE: "Разработка сайта",
-    TICKET_TOPIC_ADS: "Контекстная реклама",
+    TICKET_TOPIC_WORDPRESS: "WordPress / Поддержка сайта",
+    TICKET_TOPIC_VPS: "VPS / Серверы",
+    TICKET_TOPIC_BOTS: "Боты (MAX / Telegram)",
+    TICKET_TOPIC_DIRECT: "Яндекс.Директ",
+    TICKET_TOPIC_LANDING: "Лендинги / Сайты под ключ",
     TICKET_TOPIC_OTHER: "Другое",
+    # legacy
+    TICKET_TOPIC_SUPPORT: "WordPress / Поддержка сайта",
+    TICKET_TOPIC_WEBSITE: "Лендинги / Сайты под ключ",
+    TICKET_TOPIC_ADS: "Яндекс.Директ",
 }
+
+# Только новые кнопки в UI (без legacy payload)
+TICKET_TOPIC_BUTTONS: list[tuple[str, str]] = [
+    (TICKET_TOPIC_WORDPRESS, TICKET_TOPIC_LABELS[TICKET_TOPIC_WORDPRESS]),
+    (TICKET_TOPIC_VPS, TICKET_TOPIC_LABELS[TICKET_TOPIC_VPS]),
+    (TICKET_TOPIC_BOTS, TICKET_TOPIC_LABELS[TICKET_TOPIC_BOTS]),
+    (TICKET_TOPIC_DIRECT, TICKET_TOPIC_LABELS[TICKET_TOPIC_DIRECT]),
+    (TICKET_TOPIC_LANDING, TICKET_TOPIC_LABELS[TICKET_TOPIC_LANDING]),
+    (TICKET_TOPIC_OTHER, TICKET_TOPIC_LABELS[TICKET_TOPIC_OTHER]),
+]
 
 TICKET_URGENCY_LABELS = {
     TICKET_URGENCY_NORMAL: "Обычная",
@@ -116,21 +141,14 @@ def get_llm_reply_keyboard() -> dict[str, Any]:
 
 
 def get_ticket_topic_keyboard() -> dict[str, Any]:
+    buttons = [
+        [callback_button(label, payload)]
+        for payload, label in TICKET_TOPIC_BUTTONS
+    ]
+    buttons.append(_cancel_row())
     return {
         "type": "inline_keyboard",
-        "payload": {
-            "buttons": [
-                [
-                    callback_button("Техподдержка", TICKET_TOPIC_SUPPORT),
-                    callback_button("Разработка сайта", TICKET_TOPIC_WEBSITE),
-                ],
-                [
-                    callback_button("Контекстная реклама", TICKET_TOPIC_ADS),
-                    callback_button("Другое", TICKET_TOPIC_OTHER),
-                ],
-                _cancel_row(),
-            ],
-        },
+        "payload": {"buttons": buttons},
     }
 
 
