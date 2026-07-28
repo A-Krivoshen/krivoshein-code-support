@@ -11,6 +11,7 @@ from fastapi import FastAPI, HTTPException, Request
 from app.bot.router import BotRouter
 from app.config import settings
 from app.db import connect_db, init_db
+from app.llm.service import LlmService
 from app.logging_config import setup_logging
 from app.max_api import MaxApiClient
 from app.max_api.exceptions import MaxApiError
@@ -75,10 +76,13 @@ async def lifespan(application: FastAPI):
         logger.error("Не удалось проверить MAX API при старте: %s", exc)
         raise RuntimeError("MAX API token check failed") from exc
 
+    llm_service = LlmService()
     application.state.db = db
     application.state.max_client = client
-    application.state.router = BotRouter(client, TicketStorage(db))
+    application.state.llm_service = llm_service
+    application.state.router = BotRouter(client, TicketStorage(db), llm_service=llm_service)
     yield
+    await llm_service.aclose()
     await client.aclose()
     await db.close()
 

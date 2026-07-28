@@ -28,6 +28,7 @@ from app.bot.keyboards import (
     TICKET_URGENCY_LABELS,
     get_faq_back_keyboard,
     get_faq_keyboard,
+    get_llm_reply_keyboard,
     get_main_menu,
     get_other_menu_keyboard,
     get_ticket_confirm_keyboard,
@@ -58,6 +59,7 @@ from app.bot.texts import (
     WELCOME_TEXT,
 )
 from app.config import settings
+from app.llm.service import LlmService
 from app.max_api.client import MaxApiClient
 from app.max_api.exceptions import MaxApiError
 from app.max_api.types import ReplyMarkup
@@ -79,6 +81,10 @@ TICKET_ADMIN_NOT_CONFIGURED_TEXT = (
 TICKET_ADMIN_SEND_FAILED_TEXT = (
     "Не удалось отправить заявку. Попробуйте позже или напишите напрямую."
 )
+LLM_IDLE_FALLBACK_TEXT = (
+    "Сейчас не удалось ответить автоматически. "
+    "Выберите действие в меню или оформите заявку — помогу в ближайшее время."
+)
 
 TICKET_CALLBACK_PAYLOADS = {
     *TICKET_TOPIC_LABELS,
@@ -88,9 +94,15 @@ TICKET_CALLBACK_PAYLOADS = {
 }
 
 class BotRouter:
-    def __init__(self, client: MaxApiClient, storage: TicketStorage) -> None:
+    def __init__(
+        self,
+        client: MaxApiClient,
+        storage: TicketStorage,
+        llm_service: LlmService | None = None,
+    ) -> None:
         self.client = client
         self.storage = storage
+        self.llm_service = llm_service
         self.logger = logging.getLogger(__name__)
 
     async def handle_update(self, update: dict[str, Any]) -> None:
@@ -150,7 +162,32 @@ class BotRouter:
                     await self._handle_menu_payload(chat_id, payload)
                     return
 
-            self.logger.info("Неизвестное сообщение от chat_id=%s: %s", chat_id, stripped)
+            self.logger.info("Свободный текст в idle от chat_id=%s: %s", chat_id, stripped)
+
+            if (
+                settings.llm_enabled
+                and self.llm_service is not None
+                and stripped
+            ):
+                answer = await self.llm_service.reply(stripped)
+                if answer:
+                    await self._send_message(
+                        chat_id,
+                        answer,
+                        reply_markup=get_llm_reply_keyboard(),
+                    )
+                    return
+
+                self.logger.info(
+                    "LLM idle fallback: chat_id=%s (empty/error response)",
+                    chat_id,
+                )
+                await self._send_message(
+                    chat_id,
+                    LLM_IDLE_FALLBACK_TEXT,
+                    reply_markup=get_main_menu(),
+                )
+                return
 
         await self._send_main_menu(chat_id)
 

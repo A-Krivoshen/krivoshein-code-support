@@ -4,8 +4,14 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.bot.keyboards import MENU_TICKET, TICKET_CONFIRM_SEND, TICKET_TOPIC_SUPPORT
-from app.bot.router import BotRouter
+from app.bot.keyboards import (
+    MENU_FAQ,
+    MENU_MAIN,
+    MENU_TICKET,
+    TICKET_CONFIRM_SEND,
+    TICKET_TOPIC_SUPPORT,
+)
+from app.bot.router import LLM_IDLE_FALLBACK_TEXT, BotRouter
 from app.bot.states import TicketState
 from app.tickets.models import TicketDraft, TicketSession
 from app.tickets.storage import TicketStorage
@@ -95,3 +101,66 @@ async def test_submit_ticket_without_admin_channel(router, storage, api_client, 
     assert session is not None
     assert session.state == TicketState.TICKET_CONFIRM
     assert "админ-канал" in api_client.send_message.await_args.args[1].lower()
+
+
+async def test_idle_free_text_uses_llm_when_enabled(api_client, storage, monkeypatch):
+    monkeypatch.setattr("app.bot.router.settings.llm_enabled", True)
+    llm_service = AsyncMock()
+    llm_service.reply = AsyncMock(return_value="Ответ про WordPress")
+    router = BotRouter(api_client, storage, llm_service=llm_service)
+
+    await router.handle_update(
+        {
+            "update_type": "message_created",
+            "chat_id": 20,
+            "message": {"body": {"text": "Сколько стоит поддержка WordPress?"}},
+        }
+    )
+
+    llm_service.reply.assert_awaited_once_with("Сколько стоит поддержка WordPress?")
+    api_client.send_message.assert_awaited()
+    args = api_client.send_message.await_args
+    assert args.args[0] == 20
+    assert args.args[1] == "Ответ про WordPress"
+    markup = args.kwargs.get("reply_markup") or (args.args[2] if len(args.args) > 2 else None)
+    assert markup is not None
+    buttons = markup["payload"]["buttons"]
+    payloads = {btn["payload"] for row in buttons for btn in row}
+    assert payloads == {MENU_TICKET, MENU_FAQ, MENU_MAIN}
+
+
+async def test_idle_free_text_llm_none_uses_fallback(api_client, storage, monkeypatch):
+    monkeypatch.setattr("app.bot.router.settings.llm_enabled", True)
+    llm_service = AsyncMock()
+    llm_service.reply = AsyncMock(return_value=None)
+    router = BotRouter(api_client, storage, llm_service=llm_service)
+
+    await router.handle_update(
+        {
+            "update_type": "message_created",
+            "chat_id": 21,
+            "message": {"body": {"text": "Привет, нужен VPS"}},
+        }
+    )
+
+    llm_service.reply.assert_awaited_once()
+    args = api_client.send_message.await_args
+    assert args.args[1] == LLM_IDLE_FALLBACK_TEXT
+
+
+async def test_idle_free_text_skips_llm_when_disabled(api_client, storage, monkeypatch):
+    monkeypatch.setattr("app.bot.router.settings.llm_enabled", False)
+    llm_service = AsyncMock()
+    llm_service.reply = AsyncMock(return_value="не должен вызваться")
+    router = BotRouter(api_client, storage, llm_service=llm_service)
+
+    await router.handle_update(
+        {
+            "update_type": "message_created",
+            "chat_id": 22,
+            "message": {"body": {"text": "Свободный вопрос"}},
+        }
+    )
+
+    llm_service.reply.assert_not_awaited()
+    api_client.send_message.assert_awaited()

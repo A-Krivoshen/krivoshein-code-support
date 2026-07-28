@@ -101,6 +101,20 @@ def get_main_menu() -> dict[str, Any]:
     }
 
 
+def get_llm_reply_keyboard() -> dict[str, Any]:
+    """Кнопки после ответа LLM: заявка / FAQ / меню (существующие payload)."""
+    return {
+        "type": "inline_keyboard",
+        "payload": {
+            "buttons": [
+                [callback_button("Подать заявку", MENU_TICKET)],
+                [callback_button("Частые вопросы", MENU_FAQ)],
+                [callback_button("В меню", MENU_MAIN)],
+            ],
+        },
+    }
+
+
 def get_ticket_topic_keyboard() -> dict[str, Any]:
     return {
         "type": "inline_keyboard",
