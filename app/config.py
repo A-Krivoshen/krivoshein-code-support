@@ -33,6 +33,21 @@ class Settings(BaseSettings):
         pattern=r"^[a-zA-Z0-9_-]+$",
     )
 
+    # --- LLM (Groq) ---
+    llm_enabled: bool = Field(default=False, alias="LLM_ENABLED")
+    llm_api_key: str | None = Field(default=None, alias="LLM_API_KEY")
+    llm_base_url: str = Field(
+        default="https://api.groq.com/openai/v1",
+        alias="LLM_BASE_URL",
+    )
+    llm_model: str = Field(
+        default="llama-3.3-70b-versatile",
+        alias="LLM_MODEL",
+    )
+    llm_timeout: float = Field(default=10.0, alias="LLM_TIMEOUT")
+    llm_max_tokens: int = Field(default=500, alias="LLM_MAX_TOKENS")
+    llm_temperature: float = Field(default=0.3, alias="LLM_TEMPERATURE")
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
