@@ -578,11 +578,29 @@ class BotRouter:
             await self._send_message(chat_id, TICKET_ADMIN_NOT_CONFIGURED_TEXT)
             return
 
+        # Контекст LLM для админа — читаем до очистки истории
+        llm_snippets: list[str] = []
+        if self.chat_memory is not None:
+            try:
+                recent_user = await self.chat_memory.get_recent_user_texts(
+                    chat_id,
+                    limit=2,
+                    ttl_hours=settings.llm_history_ttl_hours,
+                )
+                # get_recent_user_texts: newest-first → для админа от старых к новым
+                llm_snippets = list(reversed(recent_user))
+            except Exception:
+                self.logger.exception(
+                    "Не удалось прочитать history для admin notify chat_id=%s",
+                    chat_id,
+                )
+
         result = await send_ticket_to_admin(
             self.client,
             admin_channel_id,
             session.draft,
             chat_id,
+            llm_user_snippets=llm_snippets or None,
         )
         if not result.text_sent:
             await self._send_message(chat_id, TICKET_ADMIN_SEND_FAILED_TEXT)

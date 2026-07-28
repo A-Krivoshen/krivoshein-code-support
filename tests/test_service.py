@@ -35,6 +35,39 @@ def test_format_admin_message_contains_chat_id():
     text = format_admin_message(draft, chat_id=777)
     assert "Chat ID: 777" in text
     assert "Разработка сайта" in text
+    assert "До заявки общался" not in text
+
+
+def test_format_admin_message_includes_llm_snippets():
+    draft = TicketDraft(
+        topic="VPS / Серверы",
+        description="Нужен VPS",
+        contact="a@b.c",
+        urgency="Обычная",
+    )
+    text = format_admin_message(
+        draft,
+        chat_id=42,
+        llm_user_snippets=["хочу настроить VPS", "а сколько примерно будет стоить?"],
+    )
+    assert "💬 До заявки общался с ботом:" in text
+    assert "— хочу настроить VPS" in text
+    assert "— а сколько примерно будет стоить?" in text
+
+
+def test_format_admin_message_clips_long_snippets():
+    draft = TicketDraft(
+        topic="Другое",
+        description="x",
+        contact="a@b.c",
+        urgency="Обычная",
+    )
+    long = "слово " * 80
+    text = format_admin_message(draft, chat_id=1, llm_user_snippets=[long])
+    assert "💬 До заявки общался с ботом:" in text
+    assert "…" in text
+    line = [ln for ln in text.splitlines() if ln.startswith("— ")][0]
+    assert len(line) <= 230
 
 
 async def test_send_ticket_to_admin_success():

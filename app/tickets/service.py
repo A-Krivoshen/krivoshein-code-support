@@ -61,7 +61,19 @@ def format_summary(draft: TicketDraft) -> str:
     return "\n".join(lines)
 
 
-def format_admin_message(draft: TicketDraft, chat_id: int) -> str:
+def _clip_snippet(text: str, *, max_len: int = 220) -> str:
+    cleaned = " ".join((text or "").split())
+    if len(cleaned) <= max_len:
+        return cleaned
+    return cleaned[: max_len - 1].rstrip() + "…"
+
+
+def format_admin_message(
+    draft: TicketDraft,
+    chat_id: int,
+    *,
+    llm_user_snippets: list[str] | None = None,
+) -> str:
     urgency, urgency_emoji = _format_urgency(draft.urgency)
     created_label = datetime.now(UTC).strftime("%d.%m.%Y %H:%M")
 
@@ -79,6 +91,14 @@ def format_admin_message(draft: TicketDraft, chat_id: int) -> str:
     forwardable_media = draft.forwardable_media()
     if forwardable_media:
         lines.append(f"🖼 Прикреплено изображений: {len(forwardable_media)}")
+
+    snippets = [_clip_snippet(s) for s in (llm_user_snippets or []) if s and s.strip()]
+    if snippets:
+        lines.append("")
+        lines.append("💬 До заявки общался с ботом:")
+        for snippet in snippets:
+            lines.append(f"— {snippet}")
+
     return "\n".join(lines)
 
 
@@ -122,9 +142,15 @@ async def send_ticket_to_admin(
     admin_channel_id: int,
     draft: TicketDraft,
     chat_id: int,
+    *,
+    llm_user_snippets: list[str] | None = None,
 ) -> TicketSendResult:
     media_total = len(draft.forwardable_media())
-    admin_text = format_admin_message(draft, chat_id)
+    admin_text = format_admin_message(
+        draft,
+        chat_id,
+        llm_user_snippets=llm_user_snippets,
+    )
 
     try:
         await client.send_channel_message(admin_channel_id, admin_text)
