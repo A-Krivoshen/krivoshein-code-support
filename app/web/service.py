@@ -164,12 +164,26 @@ class WebAssistantService:
             knowledge=knowledge,
             profile=profile,
         )
-        # Reinforce language matching for this turn
-        system_prompt += (
-            "\n\n## Current turn language\n"
-            "Reply strictly in the same language as the latest user message "
-            "(Russian or English). Do not mix languages."
-        )
+        user_en = _looks_english(message)
+        # Hard language lock for this turn (models otherwise follow RU knowledge tone)
+        if user_en:
+            system_prompt += (
+                "\n\n## MANDATORY LANGUAGE FOR THIS REPLY (override all above)\n"
+                "The user's LATEST message is in ENGLISH.\n"
+                "- Answer 100% in English only.\n"
+                "- Do NOT write Russian sentences or Russian UI phrases.\n"
+                "- Allowed Russian only inside proper names (Dr.Slon, Кривошеин) and URLs.\n"
+                "- Prices: keep numbers and ₽; describe them in English "
+                "(e.g. \"from 40,000 ₽\").\n"
+                "- Ignore that knowledge text / history may be Russian — translate facts to English.\n"
+            )
+        else:
+            system_prompt += (
+                "\n\n## MANDATORY LANGUAGE FOR THIS REPLY (override all above)\n"
+                "Последнее сообщение пользователя на русском.\n"
+                "- Отвечай полностью на русском.\n"
+                "- Не смешивай с английским (кроме URL и названий).\n"
+            )
 
         history = await self._store.get_recent_messages(
             session_id,
@@ -185,7 +199,17 @@ class WebAssistantService:
                     messages.append(
                         {"role": item["role"], "content": item["content"]}
                     )
-            messages.append({"role": "user", "content": message})
+            # Short in-band cue right on the user turn (helps small models)
+            user_content = message
+            if user_en:
+                user_content = (
+                    "[Language: English — reply in English only]\n" + message
+                )
+            else:
+                user_content = (
+                    "[Язык: русский — отвечай только на русском]\n" + message
+                )
+            messages.append({"role": "user", "content": user_content})
             try:
                 reply_text = await self._llm.chat(messages)
             except LlmError as exc:
@@ -194,6 +218,44 @@ class WebAssistantService:
             except Exception:
                 logger.exception("Web LLM unexpected error")
                 reply_text = None
+
+            # One retry if model ignored language lock
+            if reply_text and user_en and not _looks_english(reply_text):
+                logger.info("Web LLM reply language mismatch; retrying in English")
+                try:
+                    retry_messages = [
+                        {"role": "system", "content": system_prompt},
+                        {
+                            "role": "user",
+                            "content": (
+                                "Reply in English only. User asked:\n" + message
+                            ),
+                        },
+                    ]
+                    retry = await self._llm.chat(retry_messages)
+                    if retry and _looks_english(retry):
+                        reply_text = retry
+                except Exception:
+                    logger.warning("Web LLM English retry failed", exc_info=True)
+            elif reply_text and (not user_en) and _looks_english(reply_text):
+                # Rare: EN reply to RU message — retry in Russian
+                logger.info("Web LLM reply language mismatch; retrying in Russian")
+                try:
+                    retry_messages = [
+                        {"role": "system", "content": system_prompt},
+                        {
+                            "role": "user",
+                            "content": (
+                                "Ответь только на русском. Вопрос пользователя:\n"
+                                + message
+                            ),
+                        },
+                    ]
+                    retry = await self._llm.chat(retry_messages)
+                    if retry and not _looks_english(retry):
+                        reply_text = retry
+                except Exception:
+                    logger.warning("Web LLM Russian retry failed", exc_info=True)
         else:
             reply_text = None
 

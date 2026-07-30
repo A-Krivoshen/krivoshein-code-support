@@ -276,13 +276,16 @@ def build_web_system_prompt(
 Сейчас пользователь на: https://{host}{path or "/"}
 Контекст лендинга/раздела: {label}
 
-## Language / Язык ответа (strict)
-- Detect the language of the user's latest message: Russian or English.
-- Always reply in the same language. Do not mix Russian and English in one reply.
-- If the user writes in English — the entire answer must be in English (including CTAs).
+## Language / Язык ответа (strict — highest priority after safety bans)
+- Detect the language of the user's **latest** message only: Russian or English.
+- Always reply in that same language. Never mix RU and EN in one reply.
+- If the user writes in English — the entire answer must be in English
+  (including CTAs like “leave a lead”). Translate facts from knowledge if needed.
 - If the user writes in Russian — the entire answer must be in Russian.
 - If ambiguous — use Russian.
-- Page UI language does not override the user's message language.
+- Page UI language and chat history language do **not** override the latest message.
+- Knowledge base text is mostly Russian; that is NOT a reason to answer in Russian
+  when the user wrote in English.
 
 ## Как отвечать
 - Обычно 2–5 предложений. Без длинных вступлений.
