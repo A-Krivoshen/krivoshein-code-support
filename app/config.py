@@ -67,7 +67,9 @@ class Settings(BaseSettings):
             "https://ai-ready.krivoshein.site,"
             "https://krivoshein.site,"
             "https://www.krivoshein.site,"
-            "https://support.krivoshein.site"
+            "https://support.krivoshein.site,"
+            "https://drslon.ru,"
+            "https://a-krivoshen.github.io"
         ),
         alias="WEB_CORS_ORIGINS",
     )

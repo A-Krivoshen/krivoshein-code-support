@@ -81,6 +81,8 @@ def _cors_allow_origin_list() -> list[str]:
             "https://krivoshein.site",
             "https://www.krivoshein.site",
             "https://support.krivoshein.site",
+            "https://drslon.ru",
+            "https://a-krivoshen.github.io",
         ]
     return origins
 
