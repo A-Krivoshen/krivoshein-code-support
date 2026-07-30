@@ -73,23 +73,23 @@ class Settings(BaseSettings):
         ),
         alias="WEB_CORS_ORIGINS",
     )
-    # Chat messages per IP per hour (own landings / krivoshein.site)
-    web_rate_limit_per_hour: int = Field(default=30, alias="WEB_RATE_LIMIT_PER_HOUR")
-    # Stricter chat limit for public / off-ecosystem origins (drslon.ru, GitHub Pages, …)
+    # Chat messages per IP per hour — all origins (landings, drslon.ru, GitHub Pages)
+    web_rate_limit_per_hour: int = Field(default=20, alias="WEB_RATE_LIMIT_PER_HOUR")
+    # Optional stricter chat cap for non-*.krivoshein.site (0 = same as main)
     web_rate_limit_external_per_hour: int = Field(
         default=12,
         alias="WEB_RATE_LIMIT_EXTERNAL_PER_HOUR",
     )
-    # Lead form submissions per IP per hour (own origins)
-    web_lead_limit_per_hour: int = Field(default=8, alias="WEB_LEAD_LIMIT_PER_HOUR")
-    # Lead form submissions per IP per hour (external origins) — tighter
+    # Lead form submissions per IP per hour — all origins
+    web_lead_limit_per_hour: int = Field(default=5, alias="WEB_LEAD_LIMIT_PER_HOUR")
+    # Optional stricter hourly lead cap for external origins (0 = same as main)
     web_lead_limit_external_per_hour: int = Field(
         default=3,
         alias="WEB_LEAD_LIMIT_EXTERNAL_PER_HOUR",
     )
     # Hard daily cap on leads from one IP (all origins)
     web_lead_limit_per_day_ip: int = Field(
-        default=6,
+        default=10,
         alias="WEB_LEAD_LIMIT_PER_DAY_IP",
     )
     web_hub_llms_path: str = Field(

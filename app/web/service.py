@@ -167,23 +167,22 @@ class WebAssistantService:
         path_n = path or "/"
         rate_key = f"ip:{client_ip}"
         own = is_own_ecosystem_origin(origin, host_n)
-        limit = (
-            self._settings.web_rate_limit_per_hour
-            if own
-            else self._settings.web_rate_limit_external_per_hour
-        )
+        # All origins get a hard hourly chat cap; external can be stricter.
+        limit = self._settings.web_rate_limit_per_hour
+        ext = self._settings.web_rate_limit_external_per_hour
+        if not own and ext > 0:
+            limit = min(limit, ext)
 
         if await self._store.is_rate_limited(
             rate_key, kind="chat", limit=limit, window_hours=1.0
         ):
             logger.warning(
                 "Web rate/limit endpoint=chat reason=hourly_limit ip=%s origin=%s "
-                "host=%s limit=%s own=%s",
+                "host=%s limit=%s",
                 client_ip,
                 origin or "",
                 host_n,
                 limit,
-                own,
             )
             en = _looks_english(message)
             return {
@@ -411,11 +410,11 @@ class WebAssistantService:
         path_n = path or "/"
         rate_key = f"ip:{client_ip}"
         own = is_own_ecosystem_origin(origin, host_n)
-        lead_limit = (
-            self._settings.web_lead_limit_per_hour
-            if own
-            else self._settings.web_lead_limit_external_per_hour
-        )
+        # Hourly lead cap for everyone; external can be stricter via min().
+        lead_limit = self._settings.web_lead_limit_per_hour
+        ext_lead = self._settings.web_lead_limit_external_per_hour
+        if not own and ext_lead > 0:
+            lead_limit = min(lead_limit, ext_lead)
         day_cap = self._settings.web_lead_limit_per_day_ip
 
         if await self._store.is_rate_limited(
@@ -423,12 +422,11 @@ class WebAssistantService:
         ):
             logger.warning(
                 "Web rate/limit endpoint=lead reason=hourly_limit ip=%s origin=%s "
-                "host=%s limit=%s own=%s",
+                "host=%s limit=%s",
                 client_ip,
                 origin or "",
                 host_n,
                 lead_limit,
-                own,
             )
             return {
                 "ok": False,
