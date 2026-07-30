@@ -361,14 +361,30 @@ class WebAssistantService:
                     "Message a human on Telegram @DrSlon, or ask a concrete service/price question."
                 )
             if any(w in low for w in ("price", "cost", "how much", "pricing")):
-                return self._fallback_price_hint(low, label, en=True)
+                return self._fallback_service_reply(
+                    low, label, en=True, price_focus=True
+                )
             if any(w in low for w in ("lead", "order", "contact", "hire")):
                 return (
                     "Use «Leave a lead» in this chat (task + contact), "
                     "Telegram @DrSlon, or https://krivoshein.site/contacts/"
                 )
-            if "telegram" in low or "@drslon" in low:
+            svc = self._fallback_service_reply(
+                low, label, en=True, price_focus=False
+            )
+            if svc:
+                return svc
+            if ("telegram" in low or "@drslon" in low) and "bot" not in low:
                 return "Telegram: https://t.me/DrSlon"
+            if any(
+                w in low
+                for w in ("services", "what do you do", "what can you", "offerings")
+            ):
+                return (
+                    "Dr.Slon services (from-prices): WordPress, VPS, MAX/Telegram bots, "
+                    "Yandex Direct, landings, AI-ready. Full list: "
+                    "https://krivoshein.site/prays-list/ — which one?"
+                )
             return (
                 "Tell me the task in a sentence (WordPress, VPS, bot, Direct, landing…) — "
                 "I'll outline format and “from” pricing. Or write @DrSlon."
@@ -429,7 +445,7 @@ class WebAssistantService:
             )
 
         if any(w in low for w in ("цена", "стоим", "прайс", "сколько", "бюджет")):
-            return self._fallback_price_hint(low, label, en=False)
+            return self._fallback_service_reply(low, label, en=False, price_focus=True)
 
         if any(w in low for w in ("заявк", "заказ", "свяж", "контакт", "перезвон")):
             return (
@@ -438,27 +454,40 @@ class WebAssistantService:
                 "либо https://krivoshein.site/contacts/"
             )
 
-        # Service intents (before pure “telegram link” match)
-        if any(w in low for w in ("бот", "чат-бот", "chatbot")):
-            return (
-                "Боты MAX/Telegram: заявки, уведомления, сценарии — ориентир от 40 000 ₽. "
-                "Опишите задачу (что должен делать бот) или смотрите "
-                "https://bots.krivoshein.site/ · прайс: https://krivoshein.site/prays-list/"
-            )
-        if any(w in low for w in ("wordpress", "вордпресс")):
-            return (
-                "WordPress: поддержка от 20 000 ₽/мес, доработки по задаче. "
-                "https://wordpress.krivoshein.site/"
-            )
-        if any(w in low for w in ("vps", "сервер")):
-            return (
-                "VPS под ключ — от 10 000 ₽: https://vps.krivoshein.site/"
-            )
+        # Service intents: Директ, лендинги, WP, VPS, боты, AI-ready, SEO…
+        service_reply = self._fallback_service_reply(
+            low, label, en=False, price_focus=False
+        )
+        if service_reply:
+            return service_reply
 
         # Pure contact ask for Telegram (not “telegram bot”)
         if re.search(r"(^|\s)(telegram|телеграм|тг)(\s|$)", low) or "@drslon" in low:
             if "бот" not in low:
                 return "Telegram: https://t.me/DrSlon"
+
+        # Overview of all services (hub-style)
+        if any(
+            w in low
+            for w in (
+                "услуг",
+                "чем занима",
+                "что делаешь",
+                "что предлага",
+                "какие работ",
+                "направления",
+            )
+        ):
+            return (
+                "Услуги Dr.Slon (ориентиры «от»):\n"
+                "• WordPress — поддержка от 20 000 ₽/мес, доработки от 5 000 ₽\n"
+                "• VPS — настройка от 10 000 ₽\n"
+                "• Боты MAX/Telegram — от 40 000 ₽\n"
+                "• Яндекс.Директ — аудит от 10 000 ₽, ведение от 25 000 ₽/мес\n"
+                "• Лендинги — от 25 000 ₽\n"
+                "• AI-ready — Start от 10 000 ₽ / Pro от 20 000 ₽ / Bot-ready от 30 000 ₽\n"
+                "Прайс: https://krivoshein.site/prays-list/ · что именно интересует?"
+            )
 
         # Default: short, no repeated service paragraph
         return (
@@ -466,76 +495,200 @@ class WebAssistantService:
             "или AI-ready. Подскажу формат и ориентир «от». Или Telegram @DrSlon."
         )
 
-    def _fallback_price_hint(self, low: str, label: str, *, en: bool) -> str:
-        """Rough “from” prices when LLM is offline (from public site knowledge)."""
-        if en:
-            if any(w in low for w in ("wordpress", "wp ")):
-                return (
-                    "WordPress maintenance from 20,000 ₽/mo; fixes by scope. "
-                    "https://wordpress.krivoshein.site/ · full list: "
-                    "https://krivoshein.site/prays-list/"
-                )
-            if "bot" in low or "telegram" in low or "max" in low:
-                return (
-                    "Bots from about 40,000 ₽ depending on scenario. "
-                    "https://bots.krivoshein.site/ · https://krivoshein.site/prays-list/"
-                )
-            if "vps" in low or "server" in low:
-                return (
-                    "VPS turnkey setup from 10,000 ₽. "
-                    "https://vps.krivoshein.site/ · https://krivoshein.site/prays-list/"
-                )
-            if "direct" in low or "yandex" in low or "ads" in low:
-                return (
-                    "Yandex Direct audit from 10,000 ₽. "
-                    "https://direct.krivoshein.site/ · https://krivoshein.site/prays-list/"
-                )
-            if "landing" in low:
-                return (
-                    "Landings from ~25,000 ₽. "
-                    "https://landing.krivoshein.site/ · https://krivoshein.site/prays-list/"
-                )
-            return (
-                f"“From” pricing for «{label}» is on https://krivoshein.site/prays-list/. "
-                "Exact quote after a short brief. Or Telegram @DrSlon."
+    def _detect_service_key(self, low: str) -> str | None:
+        """Map free text to a service bucket (order matters: more specific first)."""
+        # Yandex Direct / ads
+        if any(
+            w in low
+            for w in (
+                "директ",
+                "яндекс.директ",
+                "yandex direct",
+                "яндекс директ",
+                "контекстн",
+                "реклам",
+                "кампани",
+                "объявлен",
             )
+        ) or re.search(r"\b(ads|adwords|ppc)\b", low):
+            return "direct"
+        if any(
+            w in low
+            for w in (
+                "лендинг",
+                "landing",
+                "посадоч",
+                "one-page",
+                "one page",
+                "одностранич",
+            )
+        ):
+            return "landing"
+        if any(
+            w in low
+            for w in (
+                "ai-ready",
+                "ai ready",
+                "нейропоиск",
+                "нейро-поиск",
+                "llms.txt",
+                "schema.org",
+                "bot-ready",
+                "bot ready",
+            )
+        ):
+            return "ai-ready"
+        if any(
+            w in low for w in ("wordpress", "вордпресс", "wp ", "wp-", "cms")
+        ) or re.search(r"\bwp\b", low):
+            return "wordpress"
+        if any(
+            w in low
+            for w in ("vps", "сервер", "хостинг", "linux", "nginx", "docker", "devops")
+        ):
+            return "vps"
+        if any(
+            w in low
+            for w in (
+                "бот",
+                "чат-бот",
+                "chatbot",
+                "чатбот",
+                "max-бот",
+                "telegram-бот",
+                "телеграм-бот",
+            )
+        ) or re.search(r"\bbots?\b", low):
+            return "bots"
+        if any(w in low for w in ("seo", "сео", "мета-тег", "sitemap", "индексац")):
+            return "seo"
+        if any(
+            w in low
+            for w in ("диагност", "аудит сайта", "починить сайт", "ремонт сайта")
+        ):
+            return "site-fix"
+        return None
 
-        if any(w in low for w in ("wordpress", "вордпресс", "wp", "вп ")):
-            return (
-                "WordPress: техподдержка от 20 000 ₽/мес, доработки — по задаче. "
-                "https://wordpress.krivoshein.site/ · прайс: https://krivoshein.site/prays-list/"
-            )
-        if any(w in low for w in ("бот", "telegram", "телеграм", "max", "макс")):
-            return (
-                "Боты MAX/Telegram — ориентир от 40 000 ₽ (зависит от сценария). "
-                "https://bots.krivoshein.site/ · прайс: https://krivoshein.site/prays-list/"
-            )
-        if any(w in low for w in ("vps", "сервер", "хостинг")):
-            return (
-                "Настройка VPS под ключ — от 10 000 ₽. "
-                "https://vps.krivoshein.site/ · прайс: https://krivoshein.site/prays-list/"
-            )
-        if any(w in low for w in ("директ", "реклам", "контекст")):
-            return (
-                "Яндекс.Директ: аудит от 10 000 ₽. "
+    def _fallback_service_reply(
+        self,
+        low: str,
+        label: str,
+        *,
+        en: bool,
+        price_focus: bool,
+    ) -> str | None:
+        """Service-specific blurb (Direct, landings, WP, VPS, bots, AI-ready…).
+
+        Returns None if no service keywords matched (caller continues).
+        When price_focus and no service key — generic price list pointer.
+        """
+        key = self._detect_service_key(low)
+        if key is None and not price_focus:
+            return None
+
+        if en:
+            return self._fallback_service_reply_en(key, label, price_focus=price_focus)
+
+        texts = {
+            "direct": (
+                "Яндекс.Директ: консультация от 2 000 ₽/час, аудит от 10 000 ₽, "
+                "настройка от 20 000 ₽, ведение от 25 000 ₽/мес. "
+                "Без слива бюджета — по брифу. "
                 "https://direct.krivoshein.site/ · прайс: https://krivoshein.site/prays-list/"
-            )
-        if any(w in low for w in ("лендинг", "landing", "посадоч")):
-            return (
-                "Лендинги — ориентир от 25 000 ₽. "
+            ),
+            "landing": (
+                "Лендинги: визитка от 25 000 ₽, с SEO и блоками от 45 000 ₽, "
+                "на WordPress от 50 000 ₽. "
                 "https://landing.krivoshein.site/ · прайс: https://krivoshein.site/prays-list/"
-            )
-        if any(w in low for w in ("ai-ready", "ai ready", "нейропоиск", "нейро")):
-            return (
-                "AI-ready: пакеты Start / Pro / Bot-ready — детали на "
-                "https://ai-ready.krivoshein.site/ и в прайсе "
-                "https://krivoshein.site/prays-list/"
-            )
+            ),
+            "wordpress": (
+                "WordPress: доработки от 5 000 ₽, техподдержка от 20 000 ₽/мес, "
+                "корп. сайт от 90 000 ₽. "
+                "https://wordpress.krivoshein.site/ · прайс: https://krivoshein.site/prays-list/"
+            ),
+            "vps": (
+                "VPS / Linux: настройка под ключ от 10 000 ₽ "
+                "(Nginx, PHP/Docker, SSL, firewall, бэкапы). Сам VPS — у провайдера. "
+                "https://vps.krivoshein.site/ · прайс: https://krivoshein.site/prays-list/"
+            ),
+            "bots": (
+                "Боты MAX/Telegram: простой под заявки от 40 000 ₽, "
+                "с CRM/таблицами от 70 000 ₽, сопровождение от 5 000 ₽/мес. "
+                "https://bots.krivoshein.site/ · прайс: https://krivoshein.site/prays-list/"
+            ),
+            "ai-ready": (
+                "AI-ready (нейропоиск / агенты): Start от 10 000 ₽, Pro от 20 000 ₽, "
+                "Bot-ready от 30 000 ₽. Без обещаний «топ-1» — техника и контент. "
+                "https://ai-ready.krivoshein.site/ · прайс: https://krivoshein.site/prays-list/"
+            ),
+            "seo": (
+                "Техническое SEO и подготовка к поиску/нейропоиску — в рамках AI-ready "
+                "и доработок сайта. Ориентиры: https://ai-ready.krivoshein.site/ "
+                "и https://krivoshein.site/prays-list/"
+            ),
+            "site-fix": (
+                "Диагностика сайта — от 5 000 ₽, ремонт/доработка — от 10 000 ₽. "
+                "Прайс: https://krivoshein.site/prays-list/ · опишите, что сломалось."
+            ),
+        }
+        if key and key in texts:
+            return texts[key]
+        # price question without clear service
         return (
-            f"Ориентиры «от» по услугам — в прайсе: https://krivoshein.site/prays-list/. "
-            f"Уточните направление (сейчас контекст: «{label}») — отвечу конкретнее, "
-            "или напишите @DrSlon."
+            "Ориентиры «от» по всем услугам (WordPress, VPS, боты, Директ, лендинги, "
+            "AI-ready) — https://krivoshein.site/prays-list/. "
+            f"Можно уточнить направление (сейчас контекст: «{label}») — отвечу конкретнее."
         )
+
+    def _fallback_service_reply_en(
+        self, key: str | None, label: str, *, price_focus: bool
+    ) -> str | None:
+        texts = {
+            "direct": (
+                "Yandex Direct: consult from 2,000 ₽/h, audit from 10,000 ₽, "
+                "setup from 20,000 ₽, management from 25,000 ₽/mo. "
+                "https://direct.krivoshein.site/ · https://krivoshein.site/prays-list/"
+            ),
+            "landing": (
+                "Landings: simple from 25,000 ₽, with SEO blocks from 45,000 ₽, "
+                "WordPress from 50,000 ₽. "
+                "https://landing.krivoshein.site/ · https://krivoshein.site/prays-list/"
+            ),
+            "wordpress": (
+                "WordPress: fixes from 5,000 ₽, maintenance from 20,000 ₽/mo, "
+                "corporate sites from 90,000 ₽. "
+                "https://wordpress.krivoshein.site/ · https://krivoshein.site/prays-list/"
+            ),
+            "vps": (
+                "VPS turnkey setup from 10,000 ₽ (Linux, Nginx, Docker, SSL, backups). "
+                "https://vps.krivoshein.site/ · https://krivoshein.site/prays-list/"
+            ),
+            "bots": (
+                "MAX/Telegram bots: simple lead bot from 40,000 ₽, "
+                "CRM/integrations from 70,000 ₽. "
+                "https://bots.krivoshein.site/ · https://krivoshein.site/prays-list/"
+            ),
+            "ai-ready": (
+                "AI-ready: Start from 10,000 ₽, Pro from 20,000 ₽, Bot-ready from 30,000 ₽. "
+                "https://ai-ready.krivoshein.site/ · https://krivoshein.site/prays-list/"
+            ),
+            "seo": (
+                "Technical SEO / AI-search prep — see AI-ready packages: "
+                "https://ai-ready.krivoshein.site/ · https://krivoshein.site/prays-list/"
+            ),
+            "site-fix": (
+                "Site diagnostics from 5,000 ₽, fixes from 10,000 ₽. "
+                "https://krivoshein.site/prays-list/"
+            ),
+        }
+        if key and key in texts:
+            return texts[key]
+        if price_focus:
+            return (
+                f"“From” pricing for «{label}» and all services: "
+                "https://krivoshein.site/prays-list/. Or Telegram @DrSlon."
+            )
+        return None
 
     async def create_lead(
         self,
