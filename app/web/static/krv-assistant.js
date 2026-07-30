@@ -1,5 +1,5 @@
 /**
- * KRV AI Popup Assistant — vanilla embed (v=20260730j)
+ * KRV AI Popup Assistant — vanilla embed (v=20260730m)
  * CSS injected as <style>. Theme: html[data-theme]. Lang: html[lang] / storage.
  */
 (function () {
@@ -882,12 +882,21 @@
     state.busy = true;
     try {
       var data = await api("/lead", payload);
-      addMsg(ui, "bot", data.message || (currentLang === "en" ? "Lead sent." : "Заявка отправлена."));
-      showLeadForm(ui, false);
-      formEl.reset();
-      if (data.handoff) setHandoff(ui, data.handoff);
+      var leadMsg =
+        (data && data.message) ||
+        (currentLang === "en" ? "Lead sent." : "Заявка отправлена.");
+      addMsg(ui, "bot", leadMsg);
+      // Only close form on success; keep it open on rate-limit / soft errors
+      if (!data || data.ok !== false) {
+        showLeadForm(ui, false);
+        formEl.reset();
+      }
+      if (data && data.handoff) setHandoff(ui, data.handoff);
     } catch (err) {
-      addMsg(ui, "bot", t("leadFail"));
+      var failText = (err && err.message) || t("leadFail");
+      // Prefer human backend message if api() put it on Error
+      if (failText && failText.indexOf("Error ") === 0) failText = t("leadFail");
+      addMsg(ui, "bot", failText);
       console.warn("[krv-assistant]", err);
     } finally {
       state.busy = false;

@@ -188,18 +188,15 @@ class WebAssistantService:
             return {
                 "session_id": session_id,
                 "reply": (
-                    "Too many messages this hour. "
-                    "Please write on Telegram @DrSlon or https://krivoshein.site/contacts/"
+                    "Too many messages in a short time. Please wait a bit and try again."
                     if en
                     else (
-                        "Слишком много сообщений за час. "
-                        "Напишите в Telegram @DrSlon или на https://krivoshein.site/contacts/"
+                        "Слишком много сообщений за короткое время. "
+                        "Подождите немного и напишите снова."
                     )
                 ),
-                "suggest_lead": True,
-                "quick_replies": (
-                    ["Leave a lead", "Telegram"] if en else ["Оставить заявку", "Telegram"]
-                ),
+                "suggest_lead": False,
+                "quick_replies": [],
             }
 
         await self._store.touch_session(session_id, host=host_n, path=path_n)
@@ -428,13 +425,14 @@ class WebAssistantService:
                 host_n,
                 lead_limit,
             )
+            lead_limit_msg = (
+                "Вы уже отправили несколько заявок. Если нужно что-то ещё — "
+                "напишите напрямую в Telegram @DrSlon или на почту."
+            )
             return {
                 "ok": False,
                 "lead_id": None,
-                "message": (
-                    "Слишком много заявок с вашего IP за час. "
-                    "Напишите напрямую: https://t.me/DrSlon"
-                ),
+                "message": lead_limit_msg,
                 "handoff": handoff_payload(),
             }
 
@@ -454,9 +452,8 @@ class WebAssistantService:
                     "ok": False,
                     "lead_id": None,
                     "message": (
-                        f"Достигнут дневной лимит заявок ({day_cap} с одного IP). "
-                        "Напишите напрямую: https://t.me/DrSlon "
-                        "или https://krivoshein.site/contacts/"
+                        "Вы уже отправили несколько заявок. Если нужно что-то ещё — "
+                        "напишите напрямую в Telegram @DrSlon или на почту."
                     ),
                     "handoff": handoff_payload(),
                 }
