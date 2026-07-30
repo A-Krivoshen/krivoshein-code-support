@@ -330,46 +330,211 @@ class WebAssistantService:
         }
 
     def _fallback_reply(self, message: str, profile: dict) -> str:
-        low = message.lower()
-        label = str(profile.get("label") or "услугам")
+        """Deterministic replies when LLM is down (e.g. 429). Keep them short and human."""
+        raw = (message or "").strip()
+        low = raw.lower()
+        # letters/digits only for short-phrase matching
+        compact = re.sub(r"[^\w\sа-яё]", " ", low, flags=re.I)
+        compact = re.sub(r"\s+", " ", compact).strip()
+        label = str(profile.get("label") or "IT-услуги")
+        site_key = str(profile.get("key") or "general")
         en = _looks_english(message)
+
         if en:
-            if any(w in low for w in ("price", "cost", "how much", "pricing")):
+            if re.search(
+                r"\b(who are you|what are you|your name|who r u)\b", compact
+            ) or compact in {"who", "who you"}:
                 return (
-                    f"Pricing for «{label}» is on https://krivoshein.site/prays-list/ "
-                    "and this page. Exact quote after a short brief. "
-                    "You can leave a lead here or write Telegram @DrSlon."
+                    "I'm the on-site assistant for Alexey Krivoshein (Dr.Slon): "
+                    "WordPress, VPS, bots, Yandex Direct, landings, AI-ready. "
+                    "What do you need help with?"
                 )
+            if re.search(
+                r"\b(hi|hello|hey|good morning|good evening)\b", compact
+            ) or compact in {"hi", "hello", "hey"}:
+                return "Hi! I'm Dr.Slon's assistant. Ask about a service or leave a lead — how can I help?"
+            if re.search(
+                r"\b(stupid|dumb|idiot|useless|rubbish|sucks|dumbass)\b", compact
+            ) or "туп" in compact:
+                return (
+                    "Fair point — I can be limited when the AI is busy. "
+                    "Message a human on Telegram @DrSlon, or ask a concrete service/price question."
+                )
+            if any(w in low for w in ("price", "cost", "how much", "pricing")):
+                return self._fallback_price_hint(low, label, en=True)
             if any(w in low for w in ("lead", "order", "contact", "hire")):
                 return (
-                    "Use the «Leave a lead» button in this chat (task + contact), "
-                    "or Telegram @DrSlon / MAX, or https://krivoshein.site/contacts/"
+                    "Use «Leave a lead» in this chat (task + contact), "
+                    "Telegram @DrSlon, or https://krivoshein.site/contacts/"
                 )
             if "telegram" in low or "@drslon" in low:
                 return "Telegram: https://t.me/DrSlon"
             return (
-                f"Briefly about «{label}»: describe the task — I'll suggest a format "
-                "and “from” pricing. Ready to talk — leave a lead or write @DrSlon. "
-                "Pricing: https://krivoshein.site/prays-list/"
+                "Tell me the task in a sentence (WordPress, VPS, bot, Direct, landing…) — "
+                "I'll outline format and “from” pricing. Or write @DrSlon."
             )
-        if any(w in low for w in ("цена", "стоим", "прайс", "сколько")):
+
+        # --- Russian ---
+        if re.search(
+            r"кто\s+ты|ты\s+кто|представься|как\s+тебя\s+зовут|что\s+ты\s+такое",
+            compact,
+        ):
             return (
-                f"Ориентиры по «{label}» — в прайсе: https://krivoshein.site/prays-list/ "
-                "и в описании этой страницы. Точная смета после короткого брифа. "
-                "Можете оставить заявку здесь или написать в Telegram @DrSlon."
+                "Я помощник Алексея Кривошеина (Dr.Slon) на сайте: "
+                "WordPress, VPS, боты MAX/Telegram, Директ, лендинги, AI-ready. "
+                "Кратко сориентирую по формату и цене «от» или помогу с заявкой. О чём вопрос?"
             )
-        if any(w in low for w in ("заявк", "заказ", "свяж", "контакт")):
+
+        if (
+            re.match(
+                r"^(привет|здравств|добрый\s+(день|вечер|утро)|хай|хелло|hello|hi)\b",
+                compact,
+            )
+            or compact
+            in {
+                "привет",
+                "здравствуйте",
+                "здравствуй",
+                "добрый день",
+                "добрый вечер",
+                "доброе утро",
+                "хай",
+            }
+        ):
+            if site_key == "hub":
+                return (
+                    "Привет! Я помощник Dr.Slon. Могу коротко по услугам и ценам «от» "
+                    "или помочь оставить заявку. Чем помочь?"
+                )
+            return (
+                f"Привет! Я помощник на странице «{label}». "
+                "Спросите по задаче/цене или нажмите «Оставить заявку»."
+            )
+
+        if re.search(
+            r"туп|глуп|дурак|идиот|беспол|фигн|херн|отстой|не\s+работа",
+            compact,
+        ):
+            return (
+                "Понимаю раздражение — иногда отвечаю упрощённо, если нейросеть недоступна. "
+                "Напишите человеку в Telegram @DrSlon или задайте конкретный вопрос "
+                "(услуга, цена, сроки) — отвечу по делу."
+            )
+
+        if re.search(r"как\s+дела|что\s+умеешь|чем\s+можешь|что\s+можешь", compact):
+            return (
+                "На связи. Умею: сориентировать по услугам Dr.Slon (WordPress, VPS, боты, "
+                "Директ, лендинги, AI-ready), подсказать ориентир «от» и помочь с заявкой. "
+                "Что нужно?"
+            )
+
+        if any(w in low for w in ("цена", "стоим", "прайс", "сколько", "бюджет")):
+            return self._fallback_price_hint(low, label, en=False)
+
+        if any(w in low for w in ("заявк", "заказ", "свяж", "контакт", "перезвон")):
             return (
                 "Оставьте заявку кнопкой «Оставить заявку» в этом чате "
-                "(задача + контакт), либо напишите в Telegram @DrSlon / MAX, "
-                "либо форма: https://krivoshein.site/contacts/"
+                "(задача + контакт), либо Telegram @DrSlon / MAX, "
+                "либо https://krivoshein.site/contacts/"
             )
-        if "telegram" in low or "тг" in low or "@drslon" in low:
-            return "Telegram: https://t.me/DrSlon"
+
+        # Service intents (before pure “telegram link” match)
+        if any(w in low for w in ("бот", "чат-бот", "chatbot")):
+            return (
+                "Боты MAX/Telegram: заявки, уведомления, сценарии — ориентир от 40 000 ₽. "
+                "Опишите задачу (что должен делать бот) или смотрите "
+                "https://bots.krivoshein.site/ · прайс: https://krivoshein.site/prays-list/"
+            )
+        if any(w in low for w in ("wordpress", "вордпресс")):
+            return (
+                "WordPress: поддержка от 20 000 ₽/мес, доработки по задаче. "
+                "https://wordpress.krivoshein.site/"
+            )
+        if any(w in low for w in ("vps", "сервер")):
+            return (
+                "VPS под ключ — от 10 000 ₽: https://vps.krivoshein.site/"
+            )
+
+        # Pure contact ask for Telegram (not “telegram bot”)
+        if re.search(r"(^|\s)(telegram|телеграм|тг)(\s|$)", low) or "@drslon" in low:
+            if "бот" not in low:
+                return "Telegram: https://t.me/DrSlon"
+
+        # Default: short, no repeated service paragraph
         return (
-            f"Кратко по «{label}»: опишите задачу — подскажу формат и ориентир «от». "
-            "Готовы обсудить — оставьте заявку или напишите @DrSlon. "
-            "Прайс: https://krivoshein.site/prays-list/"
+            "Напишите, что нужно, одной фразой — WordPress, VPS, бот, Директ, лендинг "
+            "или AI-ready. Подскажу формат и ориентир «от». Или Telegram @DrSlon."
+        )
+
+    def _fallback_price_hint(self, low: str, label: str, *, en: bool) -> str:
+        """Rough “from” prices when LLM is offline (from public site knowledge)."""
+        if en:
+            if any(w in low for w in ("wordpress", "wp ")):
+                return (
+                    "WordPress maintenance from 20,000 ₽/mo; fixes by scope. "
+                    "https://wordpress.krivoshein.site/ · full list: "
+                    "https://krivoshein.site/prays-list/"
+                )
+            if "bot" in low or "telegram" in low or "max" in low:
+                return (
+                    "Bots from about 40,000 ₽ depending on scenario. "
+                    "https://bots.krivoshein.site/ · https://krivoshein.site/prays-list/"
+                )
+            if "vps" in low or "server" in low:
+                return (
+                    "VPS turnkey setup from 10,000 ₽. "
+                    "https://vps.krivoshein.site/ · https://krivoshein.site/prays-list/"
+                )
+            if "direct" in low or "yandex" in low or "ads" in low:
+                return (
+                    "Yandex Direct audit from 10,000 ₽. "
+                    "https://direct.krivoshein.site/ · https://krivoshein.site/prays-list/"
+                )
+            if "landing" in low:
+                return (
+                    "Landings from ~25,000 ₽. "
+                    "https://landing.krivoshein.site/ · https://krivoshein.site/prays-list/"
+                )
+            return (
+                f"“From” pricing for «{label}» is on https://krivoshein.site/prays-list/. "
+                "Exact quote after a short brief. Or Telegram @DrSlon."
+            )
+
+        if any(w in low for w in ("wordpress", "вордпресс", "wp", "вп ")):
+            return (
+                "WordPress: техподдержка от 20 000 ₽/мес, доработки — по задаче. "
+                "https://wordpress.krivoshein.site/ · прайс: https://krivoshein.site/prays-list/"
+            )
+        if any(w in low for w in ("бот", "telegram", "телеграм", "max", "макс")):
+            return (
+                "Боты MAX/Telegram — ориентир от 40 000 ₽ (зависит от сценария). "
+                "https://bots.krivoshein.site/ · прайс: https://krivoshein.site/prays-list/"
+            )
+        if any(w in low for w in ("vps", "сервер", "хостинг")):
+            return (
+                "Настройка VPS под ключ — от 10 000 ₽. "
+                "https://vps.krivoshein.site/ · прайс: https://krivoshein.site/prays-list/"
+            )
+        if any(w in low for w in ("директ", "реклам", "контекст")):
+            return (
+                "Яндекс.Директ: аудит от 10 000 ₽. "
+                "https://direct.krivoshein.site/ · прайс: https://krivoshein.site/prays-list/"
+            )
+        if any(w in low for w in ("лендинг", "landing", "посадоч")):
+            return (
+                "Лендинги — ориентир от 25 000 ₽. "
+                "https://landing.krivoshein.site/ · прайс: https://krivoshein.site/prays-list/"
+            )
+        if any(w in low for w in ("ai-ready", "ai ready", "нейропоиск", "нейро")):
+            return (
+                "AI-ready: пакеты Start / Pro / Bot-ready — детали на "
+                "https://ai-ready.krivoshein.site/ и в прайсе "
+                "https://krivoshein.site/prays-list/"
+            )
+        return (
+            f"Ориентиры «от» по услугам — в прайсе: https://krivoshein.site/prays-list/. "
+            f"Уточните направление (сейчас контекст: «{label}») — отвечу конкретнее, "
+            "или напишите @DrSlon."
         )
 
     async def create_lead(
