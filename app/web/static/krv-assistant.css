@@ -449,6 +449,28 @@
   border-bottom-left-radius: 4px;
 }
 
+.krv-assistant .krv-a-msg a.krv-a-link {
+  color: var(--krv-a-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;
+  cursor: pointer;
+}
+
+.krv-assistant .krv-a-msg a.krv-a-link:hover {
+  color: var(--krv-a-accent-h);
+}
+
+html[data-theme="dark"] .krv-assistant .krv-a-msg a.krv-a-link,
+.krv-assistant.krv-a-dark .krv-a-msg a.krv-a-link {
+  color: #7aa3ff;
+}
+
+html[data-theme="dark"] .krv-assistant .krv-a-msg a.krv-a-link:hover,
+.krv-assistant.krv-a-dark .krv-a-msg a.krv-a-link:hover {
+  color: #a8c4ff;
+}
+
 .krv-assistant .krv-a-msg.user {
   align-self: flex-end;
   background: var(--krv-a-user);
