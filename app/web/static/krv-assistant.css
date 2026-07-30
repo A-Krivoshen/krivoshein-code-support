@@ -101,6 +101,15 @@
   }
 }
 
+/* When assistant panel is open on mobile, free the bottom for the chat panel */
+@media (max-width: 767.98px) {
+  body.krv-a-panel-open .mobile-cta-bar {
+    display: none !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+  }
+}
+
 .krv-assistant *,
 .krv-assistant *::before,
 .krv-assistant *::after {
