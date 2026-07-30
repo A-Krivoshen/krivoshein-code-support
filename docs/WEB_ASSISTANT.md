@@ -96,3 +96,11 @@ app/web/
   static/krv-assistant.js
   static/krv-assistant.css
 ```
+
+## Proactive invite
+
+After ~50s of idle (62s on viewports &lt; 480px) shows a soft tip next to the bubble with a site-specific question.
+- Dismiss (×) → `localStorage.krv_assistant_proactive_dismissed=1` (session never again)
+- Shown once per tab → `sessionStorage.krv_assistant_proactive_shown=1`
+- Does not open the full panel; click tip/bubble opens chat as usual
+- Suppressed while the panel is open

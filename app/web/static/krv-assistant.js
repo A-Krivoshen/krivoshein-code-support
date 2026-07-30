@@ -1,5 +1,5 @@
 /**
- * KRV AI Popup Assistant — vanilla embed (v=20260730c)
+ * KRV AI Popup Assistant — vanilla embed (v=20260730e)
  * CSS is injected as <style> (no cross-origin stylesheet issues).
  */
 (function () {
@@ -21,7 +21,12 @@
   var SIDE = (script && script.getAttribute("data-side")) || "right";
 
   var STORAGE_KEY = "krv_assistant_session_v1";
-  var EMBEDDED_CSS = "/* KRV Web AI Assistant \u2014 clean technical UI (right-bottom)\n * Avoids landing mobile-cta-bar (~z-index 60, ~64px) via --krv-a-stack-bottom.\n */\n.krv-assistant {\n  --krv-a-bg: #ffffff;\n  --krv-a-bg-soft: #f8fafc;\n  --krv-a-bg-msg: #f1f5f9;\n  --krv-a-line: #e2e8f0;\n  --krv-a-ink: #0f172a;\n  --krv-a-mute: #64748b;\n  --krv-a-accent: #315fe8;\n  --krv-a-accent-h: #244ac2;\n  --krv-a-accent-soft: #eef4ff;\n  --krv-a-user: #315fe8;\n  --krv-a-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.06),\n    0 16px 40px -8px rgba(15, 23, 42, 0.18);\n  --krv-a-radius: 16px;\n  --krv-a-radius-sm: 10px;\n  /* Above page content & mobile CTA (60) / cookie (90); below rare system modals */\n  --krv-a-z: 120;\n  /* JS sets --krv-a-stack-bottom to clear fixed bottom bars; CSS fallback for mobile CTA */\n  --krv-a-stack-bottom: 16px;\n  --krv-a-edge: 16px;\n  --krv-a-gap: 10px;\n  --krv-a-bubble-size: 56px;\n  --krv-a-w: min(360px, calc(100vw - 24px));\n  --krv-a-h: min(\n    520px,\n    calc(\n      100dvh - var(--krv-a-stack-bottom) - env(safe-area-inset-bottom, 0px) -\n        var(--krv-a-bubble-size) - var(--krv-a-gap) - 16px\n    )\n  );\n\n  position: fixed;\n  z-index: var(--krv-a-z);\n  right: max(var(--krv-a-edge), env(safe-area-inset-right, 0px));\n  bottom: calc(\n    var(--krv-a-stack-bottom) + env(safe-area-inset-bottom, 0px)\n  );\n  left: auto;\n  display: flex;\n  flex-direction: column;\n  align-items: flex-end;\n  gap: var(--krv-a-gap);\n  color: var(--krv-a-ink);\n  line-height: 1.45;\n  font-size: 14px;\n  font-family: Inter, system-ui, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif;\n  -webkit-font-smoothing: antialiased;\n  /* Don't trap page scroll when closed */\n  pointer-events: none;\n  max-width: calc(100vw - 16px);\n}\n\n/* Only interactive pieces receive clicks */\n.krv-assistant .krv-a-bubble,\n.krv-assistant .krv-a-panel {\n  pointer-events: auto;\n}\n\n.krv-assistant[data-side=\"left\"] {\n  left: max(var(--krv-a-edge), env(safe-area-inset-left, 0px));\n  right: auto;\n  align-items: flex-start;\n}\n\n/* Mobile: clear fixed .mobile-cta-bar (~64\u201372px) even before JS measures */\n@media (max-width: 767.98px) {\n  .krv-assistant {\n    --krv-a-stack-bottom: 76px;\n    --krv-a-edge: 12px;\n    --krv-a-bubble-size: 52px;\n  }\n}\n\n/* Very small phones (SE / 375) */\n@media (max-width: 380px) {\n  .krv-assistant {\n    --krv-a-stack-bottom: 80px;\n    --krv-a-edge: 10px;\n    --krv-a-bubble-size: 48px;\n    --krv-a-gap: 8px;\n  }\n}\n\n/* Desktop / tablet: no mobile bar */\n@media (min-width: 768px) {\n  .krv-assistant {\n    --krv-a-stack-bottom: 16px;\n    --krv-a-edge: 20px;\n    --krv-a-bubble-size: 56px;\n  }\n}\n\n.krv-assistant *,\n.krv-assistant *::before,\n.krv-assistant *::after {\n  box-sizing: border-box;\n}\n\n/* \u2014\u2014 Bubble \u2014\u2014 */\n.krv-assistant .krv-a-bubble {\n  width: var(--krv-a-bubble-size);\n  height: var(--krv-a-bubble-size);\n  flex: 0 0 auto;\n  border: 0;\n  border-radius: 50%;\n  cursor: pointer;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  background: var(--krv-a-accent);\n  color: #fff;\n  box-shadow: 0 8px 24px rgba(49, 95, 232, 0.35);\n  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;\n  padding: 0;\n}\n\n.krv-assistant .krv-a-bubble:hover {\n  background: var(--krv-a-accent-h);\n  transform: translateY(-1px);\n  box-shadow: 0 10px 28px rgba(49, 95, 232, 0.42);\n}\n\n.krv-assistant .krv-a-bubble:active {\n  transform: translateY(0);\n}\n\n.krv-assistant .krv-a-bubble:focus-visible {\n  outline: 2px solid var(--krv-a-accent);\n  outline-offset: 3px;\n}\n\n.krv-assistant .krv-a-bubble svg {\n  width: 24px;\n  height: 24px;\n  display: block;\n  fill: none;\n  stroke: currentColor;\n  stroke-width: 2;\n  stroke-linecap: round;\n  stroke-linejoin: round;\n}\n\n.krv-assistant.is-open .krv-a-bubble {\n  background: #1e293b;\n  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.2);\n}\n\n/* \u2014\u2014 Panel \u2014\u2014 */\n.krv-assistant .krv-a-panel {\n  display: none;\n  width: var(--krv-a-w);\n  height: var(--krv-a-h);\n  max-height: var(--krv-a-h);\n  max-width: 100%;\n  flex-direction: column;\n  background: var(--krv-a-bg);\n  border: 1px solid var(--krv-a-line);\n  border-radius: var(--krv-a-radius);\n  box-shadow: var(--krv-a-shadow);\n  overflow: hidden;\n  /* Keep panel inside viewport horizontally */\n  margin-right: 0;\n  margin-left: 0;\n}\n\n.krv-assistant.is-open .krv-a-panel {\n  display: flex;\n}\n\n/* When open on mobile, lock body scroll slightly less invasive: overscroll contain */\n.krv-assistant.is-open .krv-a-panel,\n.krv-assistant.is-open .krv-a-msgs {\n  overscroll-behavior: contain;\n}\n\n/* Header */\n.krv-assistant .krv-a-head {\n  flex: 0 0 auto;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  padding: 14px 14px 12px;\n  background: var(--krv-a-bg);\n  border-bottom: 1px solid var(--krv-a-line);\n}\n\n.krv-assistant .krv-a-head-left {\n  display: flex;\n  align-items: center;\n  gap: 10px;\n  min-width: 0;\n}\n\n.krv-assistant .krv-a-avatar {\n  width: 36px;\n  height: 36px;\n  border-radius: 10px;\n  flex: 0 0 auto;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  background: var(--krv-a-accent-soft);\n  color: var(--krv-a-accent);\n  font-size: 13px;\n  font-weight: 700;\n  letter-spacing: -0.02em;\n}\n\n.krv-assistant .krv-a-titles {\n  min-width: 0;\n}\n\n.krv-assistant .krv-a-head h2 {\n  margin: 0;\n  font-size: 14px;\n  font-weight: 650;\n  letter-spacing: -0.01em;\n  color: var(--krv-a-ink);\n  line-height: 1.25;\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n}\n\n.krv-assistant .krv-a-head p {\n  margin: 2px 0 0;\n  font-size: 12px;\n  color: var(--krv-a-mute);\n  line-height: 1.3;\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n}\n\n.krv-assistant .krv-a-close {\n  flex: 0 0 auto;\n  width: 32px;\n  height: 32px;\n  border: 0;\n  border-radius: 8px;\n  background: transparent;\n  color: var(--krv-a-mute);\n  cursor: pointer;\n  font-size: 20px;\n  line-height: 1;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  padding: 0;\n}\n\n.krv-assistant .krv-a-close:hover {\n  background: var(--krv-a-bg-soft);\n  color: var(--krv-a-ink);\n}\n\n/* Messages */\n.krv-assistant .krv-a-msgs {\n  flex: 1 1 auto;\n  min-height: 0;\n  overflow-x: hidden;\n  overflow-y: auto;\n  padding: 12px 12px 8px;\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n  background: var(--krv-a-bg-soft);\n  -webkit-overflow-scrolling: touch;\n}\n\n.krv-assistant .krv-a-msg {\n  max-width: 88%;\n  padding: 9px 12px;\n  border-radius: 12px;\n  white-space: pre-wrap;\n  word-break: break-word;\n  font-size: 13px;\n  line-height: 1.45;\n}\n\n.krv-assistant .krv-a-msg.bot {\n  align-self: flex-start;\n  background: var(--krv-a-bg);\n  border: 1px solid var(--krv-a-line);\n  color: var(--krv-a-ink);\n  border-bottom-left-radius: 4px;\n}\n\n.krv-assistant .krv-a-msg.user {\n  align-self: flex-end;\n  background: var(--krv-a-user);\n  color: #fff;\n  border-bottom-right-radius: 4px;\n}\n\n.krv-assistant .krv-a-msg.sys {\n  align-self: center;\n  max-width: 100%;\n  background: transparent;\n  color: var(--krv-a-mute);\n  font-size: 11.5px;\n  padding: 2px 6px;\n  text-align: center;\n}\n\n.krv-assistant .krv-a-typing {\n  align-self: flex-start;\n  color: var(--krv-a-mute);\n  font-size: 12px;\n  padding: 2px 4px;\n}\n\n/* Quick replies */\n.krv-assistant .krv-a-quick {\n  flex: 0 0 auto;\n  display: flex;\n  flex-wrap: wrap;\n  gap: 6px;\n  padding: 8px 12px 0;\n  background: var(--krv-a-bg);\n}\n\n.krv-assistant .krv-a-quick:empty {\n  display: none;\n}\n\n.krv-assistant .krv-a-chip {\n  border: 1px solid var(--krv-a-line);\n  background: var(--krv-a-bg);\n  color: var(--krv-a-ink);\n  border-radius: 999px;\n  padding: 6px 11px;\n  font-size: 12px;\n  line-height: 1.2;\n  cursor: pointer;\n  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;\n}\n\n.krv-assistant .krv-a-chip:hover {\n  border-color: #93b0f5;\n  background: var(--krv-a-accent-soft);\n  color: var(--krv-a-accent);\n}\n\n/* Handoff links */\n.krv-assistant .krv-a-handoff {\n  flex: 0 0 auto;\n  display: flex;\n  flex-wrap: wrap;\n  gap: 6px;\n  padding: 8px 12px;\n  background: var(--krv-a-bg);\n  border-bottom: 1px solid var(--krv-a-line);\n}\n\n.krv-assistant .krv-a-handoff:empty {\n  display: none;\n  border-bottom: 0;\n  padding: 0;\n}\n\n.krv-assistant .krv-a-handoff a,\n.krv-assistant .krv-a-handoff button.krv-a-chip {\n  font-size: 11.5px;\n  color: var(--krv-a-accent);\n  text-decoration: none;\n  border: 1px solid var(--krv-a-line);\n  border-radius: 999px;\n  padding: 5px 10px;\n  background: var(--krv-a-bg-soft);\n  cursor: pointer;\n  font-family: inherit;\n  line-height: 1.2;\n}\n\n.krv-assistant .krv-a-handoff a:hover,\n.krv-assistant .krv-a-handoff button.krv-a-chip:hover {\n  border-color: #93b0f5;\n  background: var(--krv-a-accent-soft);\n}\n\n/* Lead form */\n.krv-assistant .krv-a-form {\n  display: none;\n  flex: 0 0 auto;\n  flex-direction: column;\n  gap: 8px;\n  padding: 10px 12px 12px;\n  border-top: 1px solid var(--krv-a-line);\n  background: var(--krv-a-bg);\n  max-height: 55%;\n  overflow-y: auto;\n}\n\n.krv-assistant .krv-a-form.is-on {\n  display: flex;\n}\n\n.krv-assistant .krv-a-form-title {\n  margin: 0 0 2px;\n  font-size: 12.5px;\n  font-weight: 650;\n  color: var(--krv-a-ink);\n}\n\n.krv-assistant .krv-a-field {\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n  margin: 0;\n}\n\n.krv-assistant .krv-a-field > span {\n  font-size: 11px;\n  font-weight: 500;\n  color: var(--krv-a-mute);\n}\n\n.krv-assistant .krv-a-field-row {\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 8px;\n}\n\n.krv-assistant .krv-a-form input,\n.krv-assistant .krv-a-form textarea,\n.krv-assistant .krv-a-form select {\n  width: 100%;\n  margin: 0;\n  border: 1px solid var(--krv-a-line);\n  background: var(--krv-a-bg);\n  color: var(--krv-a-ink);\n  border-radius: var(--krv-a-radius-sm);\n  padding: 8px 10px;\n  font-size: 13px;\n  font-family: inherit;\n  line-height: 1.35;\n  min-height: 38px;\n  appearance: none;\n  -webkit-appearance: none;\n}\n\n.krv-assistant .krv-a-form textarea {\n  min-height: 64px;\n  max-height: 100px;\n  resize: vertical;\n}\n\n.krv-assistant .krv-a-form select {\n  background-image: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");\n  background-repeat: no-repeat;\n  background-position: right 10px center;\n  padding-right: 28px;\n}\n\n.krv-assistant .krv-a-form input:focus,\n.krv-assistant .krv-a-form textarea:focus,\n.krv-assistant .krv-a-form select:focus {\n  outline: none;\n  border-color: var(--krv-a-accent);\n  box-shadow: 0 0 0 3px rgba(49, 95, 232, 0.15);\n}\n\n.krv-assistant .krv-a-form input::placeholder,\n.krv-assistant .krv-a-form textarea::placeholder {\n  color: #94a3b8;\n}\n\n.krv-assistant .krv-a-hp {\n  position: absolute !important;\n  left: -10000px !important;\n  width: 1px !important;\n  height: 1px !important;\n  overflow: hidden !important;\n  opacity: 0 !important;\n  pointer-events: none !important;\n}\n\n.krv-assistant .krv-a-form-actions {\n  display: flex;\n  gap: 8px;\n  margin-top: 2px;\n}\n\n.krv-assistant .krv-a-btn {\n  border: 0;\n  border-radius: var(--krv-a-radius-sm);\n  padding: 9px 12px;\n  font-size: 13px;\n  font-weight: 600;\n  font-family: inherit;\n  cursor: pointer;\n  line-height: 1.2;\n  min-height: 38px;\n}\n\n.krv-assistant .krv-a-btn.primary {\n  background: var(--krv-a-accent);\n  color: #fff;\n  flex: 1;\n}\n\n.krv-assistant .krv-a-btn.primary:hover {\n  background: var(--krv-a-accent-h);\n}\n\n.krv-assistant .krv-a-btn.ghost {\n  background: var(--krv-a-bg);\n  color: var(--krv-a-mute);\n  border: 1px solid var(--krv-a-line);\n  flex: 0 0 auto;\n  min-width: 88px;\n}\n\n.krv-assistant .krv-a-btn.ghost:hover {\n  color: var(--krv-a-ink);\n  background: var(--krv-a-bg-soft);\n}\n\n/* Composer */\n.krv-assistant .krv-a-composer {\n  flex: 0 0 auto;\n  display: flex;\n  align-items: flex-end;\n  gap: 8px;\n  padding: 10px 12px 12px;\n  border-top: 1px solid var(--krv-a-line);\n  background: var(--krv-a-bg);\n}\n\n.krv-assistant .krv-a-composer.is-hidden {\n  display: none;\n}\n\n.krv-assistant .krv-a-composer textarea {\n  flex: 1 1 auto;\n  width: 100%;\n  min-height: 40px;\n  max-height: 96px;\n  margin: 0;\n  border: 1px solid var(--krv-a-line);\n  background: var(--krv-a-bg-soft);\n  color: var(--krv-a-ink);\n  border-radius: 12px;\n  padding: 10px 12px;\n  font-size: 13px;\n  font-family: inherit;\n  line-height: 1.4;\n  resize: none;\n}\n\n.krv-assistant .krv-a-composer textarea:focus {\n  outline: none;\n  border-color: var(--krv-a-accent);\n  background: var(--krv-a-bg);\n  box-shadow: 0 0 0 3px rgba(49, 95, 232, 0.12);\n}\n\n.krv-assistant .krv-a-send {\n  flex: 0 0 auto;\n  width: 40px;\n  height: 40px;\n  border: 0;\n  border-radius: 12px;\n  background: var(--krv-a-accent);\n  color: #fff;\n  cursor: pointer;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  padding: 0;\n  font-size: 16px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.krv-assistant .krv-a-send:hover {\n  background: var(--krv-a-accent-h);\n}\n\n.krv-assistant .krv-a-send:disabled {\n  opacity: 0.5;\n  cursor: not-allowed;\n}\n\n/* Mobile width/form */\n@media (max-width: 480px) {\n  .krv-assistant {\n    --krv-a-w: min(calc(100vw - 20px), 400px);\n    width: auto;\n    max-width: calc(100vw - 16px);\n  }\n\n  .krv-assistant .krv-a-field-row {\n    grid-template-columns: 1fr;\n  }\n\n  .krv-assistant .krv-a-bubble svg {\n    width: 22px;\n    height: 22px;\n  }\n}\n\n/* Prefer reduced motion */\n@media (prefers-reduced-motion: reduce) {\n  .krv-assistant .krv-a-bubble {\n    transition: none;\n  }\n}\n";
+  var PROACTIVE_DISMISS_KEY = "krv_assistant_proactive_dismissed";
+  var PROACTIVE_SHOWN_KEY = "krv_assistant_proactive_shown";
+  var PROACTIVE_MS = 50000;
+  var PROACTIVE_MS_MOBILE = 62000;
+  var SCROLL_IDLE_PX = 48;
+  var EMBEDDED_CSS = "/* KRV Web AI Assistant \u2014 clean technical UI (right-bottom)\n * Avoids landing mobile-cta-bar (~z-index 60, ~64px) via --krv-a-stack-bottom.\n */\n.krv-assistant {\n  --krv-a-bg: #ffffff;\n  --krv-a-bg-soft: #f8fafc;\n  --krv-a-bg-msg: #f1f5f9;\n  --krv-a-line: #e2e8f0;\n  --krv-a-ink: #0f172a;\n  --krv-a-mute: #64748b;\n  --krv-a-accent: #315fe8;\n  --krv-a-accent-h: #244ac2;\n  --krv-a-accent-soft: #eef4ff;\n  --krv-a-user: #315fe8;\n  --krv-a-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.06),\n    0 16px 40px -8px rgba(15, 23, 42, 0.18);\n  --krv-a-radius: 16px;\n  --krv-a-radius-sm: 10px;\n  /* Above page content & mobile CTA (60) / cookie (90); below rare system modals */\n  --krv-a-z: 120;\n  /* JS sets --krv-a-stack-bottom to clear fixed bottom bars; CSS fallback for mobile CTA */\n  --krv-a-stack-bottom: 16px;\n  --krv-a-edge: 16px;\n  --krv-a-gap: 10px;\n  --krv-a-bubble-size: 56px;\n  --krv-a-w: min(360px, calc(100vw - 24px));\n  --krv-a-h: min(\n    520px,\n    calc(\n      100dvh - var(--krv-a-stack-bottom) - env(safe-area-inset-bottom, 0px) -\n        var(--krv-a-bubble-size) - var(--krv-a-gap) - 16px\n    )\n  );\n\n  position: fixed;\n  z-index: var(--krv-a-z);\n  right: max(var(--krv-a-edge), env(safe-area-inset-right, 0px));\n  bottom: calc(\n    var(--krv-a-stack-bottom) + env(safe-area-inset-bottom, 0px)\n  );\n  left: auto;\n  display: flex;\n  flex-direction: column;\n  align-items: flex-end;\n  gap: var(--krv-a-gap);\n  color: var(--krv-a-ink);\n  line-height: 1.45;\n  font-size: 14px;\n  font-family: Inter, system-ui, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif;\n  -webkit-font-smoothing: antialiased;\n  /* Don't trap page scroll when closed */\n  pointer-events: none;\n  max-width: calc(100vw - 16px);\n}\n\n/* Only interactive pieces receive clicks */\n.krv-assistant .krv-a-bubble,\n.krv-assistant .krv-a-panel,\n.krv-assistant .krv-a-tip {\n  pointer-events: auto;\n}\n\n.krv-assistant[data-side=\"left\"] {\n  left: max(var(--krv-a-edge), env(safe-area-inset-left, 0px));\n  right: auto;\n  align-items: flex-start;\n}\n\n/* Mobile: clear fixed .mobile-cta-bar (~64\u201372px) even before JS measures */\n@media (max-width: 767.98px) {\n  .krv-assistant {\n    --krv-a-stack-bottom: 76px;\n    --krv-a-edge: 12px;\n    --krv-a-bubble-size: 52px;\n  }\n}\n\n/* Very small phones (SE / 375) */\n@media (max-width: 380px) {\n  .krv-assistant {\n    --krv-a-stack-bottom: 80px;\n    --krv-a-edge: 10px;\n    --krv-a-bubble-size: 48px;\n    --krv-a-gap: 8px;\n  }\n}\n\n/* Desktop / tablet: no mobile bar */\n@media (min-width: 768px) {\n  .krv-assistant {\n    --krv-a-stack-bottom: 16px;\n    --krv-a-edge: 20px;\n    --krv-a-bubble-size: 56px;\n  }\n}\n\n.krv-assistant *,\n.krv-assistant *::before,\n.krv-assistant *::after {\n  box-sizing: border-box;\n}\n\n/* \u2014\u2014 Bubble \u2014\u2014 */\n.krv-assistant .krv-a-bubble {\n  width: var(--krv-a-bubble-size);\n  height: var(--krv-a-bubble-size);\n  flex: 0 0 auto;\n  border: 0;\n  border-radius: 50%;\n  cursor: pointer;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  background: var(--krv-a-accent);\n  color: #fff;\n  box-shadow: 0 8px 24px rgba(49, 95, 232, 0.35);\n  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;\n  padding: 0;\n}\n\n.krv-assistant .krv-a-bubble:hover {\n  background: var(--krv-a-accent-h);\n  transform: translateY(-1px);\n  box-shadow: 0 10px 28px rgba(49, 95, 232, 0.42);\n}\n\n.krv-assistant .krv-a-bubble:active {\n  transform: translateY(0);\n}\n\n.krv-assistant .krv-a-bubble:focus-visible {\n  outline: 2px solid var(--krv-a-accent);\n  outline-offset: 3px;\n}\n\n.krv-assistant .krv-a-bubble svg {\n  width: 24px;\n  height: 24px;\n  display: block;\n  fill: none;\n  stroke: currentColor;\n  stroke-width: 2;\n  stroke-linecap: round;\n  stroke-linejoin: round;\n}\n\n.krv-assistant.is-open .krv-a-bubble {\n  background: #1e293b;\n  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.2);\n}\n\n/* Soft proactive nudge */\n.krv-assistant .krv-a-nudge-wrap {\n  display: flex;\n  flex-direction: row;\n  align-items: flex-end;\n  gap: 8px;\n  pointer-events: none;\n}\n\n.krv-assistant[data-side=\"left\"] .krv-a-nudge-wrap {\n  flex-direction: row-reverse;\n}\n\n.krv-assistant .krv-a-tip {\n  display: none;\n  max-width: min(220px, calc(100vw - 88px));\n  padding: 8px 10px 8px 12px;\n  border-radius: 12px;\n  border: 1px solid var(--krv-a-line);\n  background: var(--krv-a-bg);\n  color: var(--krv-a-ink);\n  box-shadow: var(--krv-a-shadow);\n  font-size: 12.5px;\n  line-height: 1.35;\n  position: relative;\n  cursor: pointer;\n  text-align: left;\n  gap: 6px;\n  align-items: flex-start;\n}\n\n.krv-assistant.is-nudge .krv-a-tip {\n  display: inline-flex;\n  animation: krv-a-tip-in 0.28s ease;\n}\n\n.krv-assistant .krv-a-tip-text {\n  flex: 1 1 auto;\n  min-width: 0;\n}\n\n.krv-assistant .krv-a-tip-x {\n  flex: 0 0 auto;\n  border: 0;\n  background: transparent;\n  color: var(--krv-a-mute);\n  cursor: pointer;\n  font-size: 16px;\n  line-height: 1;\n  padding: 0 0 0 4px;\n  margin: -2px 0 0;\n}\n\n.krv-assistant .krv-a-tip-x:hover {\n  color: var(--krv-a-ink);\n}\n\n/* subtle pulse on bubble when nudging */\n.krv-assistant.is-nudge .krv-a-bubble {\n  box-shadow:\n    0 0 0 0 rgba(49, 95, 232, 0.45),\n    0 8px 24px rgba(49, 95, 232, 0.35);\n  animation: krv-a-pulse 1.8s ease-out infinite;\n}\n\n.krv-assistant.is-open.is-nudge .krv-a-bubble {\n  animation: none;\n}\n\n@keyframes krv-a-pulse {\n  0% {\n    box-shadow:\n      0 0 0 0 rgba(49, 95, 232, 0.4),\n      0 8px 24px rgba(49, 95, 232, 0.35);\n  }\n  70% {\n    box-shadow:\n      0 0 0 12px rgba(49, 95, 232, 0),\n      0 8px 24px rgba(49, 95, 232, 0.28);\n  }\n  100% {\n    box-shadow:\n      0 0 0 0 rgba(49, 95, 232, 0),\n      0 8px 24px rgba(49, 95, 232, 0.35);\n  }\n}\n\n@keyframes krv-a-tip-in {\n  from {\n    opacity: 0;\n    transform: translateY(6px) scale(0.96);\n  }\n  to {\n    opacity: 1;\n    transform: translateY(0) scale(1);\n  }\n}\n\n@media (max-width: 480px) {\n  .krv-assistant .krv-a-tip {\n    max-width: min(168px, calc(100vw - 78px));\n    font-size: 12px;\n    padding: 7px 8px 7px 10px;\n  }\n}\n\n@media (prefers-reduced-motion: reduce) {\n  .krv-assistant.is-nudge .krv-a-bubble {\n    animation: none;\n  }\n  .krv-assistant.is-nudge .krv-a-tip {\n    animation: none;\n  }\n}\n\n/* \u2014\u2014 Panel \u2014\u2014 */\n.krv-assistant .krv-a-panel {\n  display: none;\n  width: var(--krv-a-w);\n  height: var(--krv-a-h);\n  max-height: var(--krv-a-h);\n  max-width: 100%;\n  flex-direction: column;\n  background: var(--krv-a-bg);\n  border: 1px solid var(--krv-a-line);\n  border-radius: var(--krv-a-radius);\n  box-shadow: var(--krv-a-shadow);\n  overflow: hidden;\n  /* Keep panel inside viewport horizontally */\n  margin-right: 0;\n  margin-left: 0;\n}\n\n.krv-assistant.is-open .krv-a-panel {\n  display: flex;\n}\n\n/* When open on mobile, lock body scroll slightly less invasive: overscroll contain */\n.krv-assistant.is-open .krv-a-panel,\n.krv-assistant.is-open .krv-a-msgs {\n  overscroll-behavior: contain;\n}\n\n/* Header */\n.krv-assistant .krv-a-head {\n  flex: 0 0 auto;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  padding: 14px 14px 12px;\n  background: var(--krv-a-bg);\n  border-bottom: 1px solid var(--krv-a-line);\n}\n\n.krv-assistant .krv-a-head-left {\n  display: flex;\n  align-items: center;\n  gap: 10px;\n  min-width: 0;\n}\n\n.krv-assistant .krv-a-avatar {\n  width: 36px;\n  height: 36px;\n  border-radius: 10px;\n  flex: 0 0 auto;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  background: var(--krv-a-accent-soft);\n  color: var(--krv-a-accent);\n  font-size: 13px;\n  font-weight: 700;\n  letter-spacing: -0.02em;\n}\n\n.krv-assistant .krv-a-titles {\n  min-width: 0;\n}\n\n.krv-assistant .krv-a-head h2 {\n  margin: 0;\n  font-size: 14px;\n  font-weight: 650;\n  letter-spacing: -0.01em;\n  color: var(--krv-a-ink);\n  line-height: 1.25;\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n}\n\n.krv-assistant .krv-a-head p {\n  margin: 2px 0 0;\n  font-size: 12px;\n  color: var(--krv-a-mute);\n  line-height: 1.3;\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n}\n\n.krv-assistant .krv-a-close {\n  flex: 0 0 auto;\n  width: 32px;\n  height: 32px;\n  border: 0;\n  border-radius: 8px;\n  background: transparent;\n  color: var(--krv-a-mute);\n  cursor: pointer;\n  font-size: 20px;\n  line-height: 1;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  padding: 0;\n}\n\n.krv-assistant .krv-a-close:hover {\n  background: var(--krv-a-bg-soft);\n  color: var(--krv-a-ink);\n}\n\n/* Messages */\n.krv-assistant .krv-a-msgs {\n  flex: 1 1 auto;\n  min-height: 0;\n  overflow-x: hidden;\n  overflow-y: auto;\n  padding: 12px 12px 8px;\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n  background: var(--krv-a-bg-soft);\n  -webkit-overflow-scrolling: touch;\n}\n\n.krv-assistant .krv-a-msg {\n  max-width: 88%;\n  padding: 9px 12px;\n  border-radius: 12px;\n  white-space: pre-wrap;\n  word-break: break-word;\n  font-size: 13px;\n  line-height: 1.45;\n}\n\n.krv-assistant .krv-a-msg.bot {\n  align-self: flex-start;\n  background: var(--krv-a-bg);\n  border: 1px solid var(--krv-a-line);\n  color: var(--krv-a-ink);\n  border-bottom-left-radius: 4px;\n}\n\n.krv-assistant .krv-a-msg.user {\n  align-self: flex-end;\n  background: var(--krv-a-user);\n  color: #fff;\n  border-bottom-right-radius: 4px;\n}\n\n.krv-assistant .krv-a-msg.sys {\n  align-self: center;\n  max-width: 100%;\n  background: transparent;\n  color: var(--krv-a-mute);\n  font-size: 11.5px;\n  padding: 2px 6px;\n  text-align: center;\n}\n\n.krv-assistant .krv-a-typing {\n  align-self: flex-start;\n  color: var(--krv-a-mute);\n  font-size: 12px;\n  padding: 2px 4px;\n}\n\n/* Quick replies */\n.krv-assistant .krv-a-quick {\n  flex: 0 0 auto;\n  display: flex;\n  flex-wrap: wrap;\n  gap: 6px;\n  padding: 8px 12px 0;\n  background: var(--krv-a-bg);\n}\n\n.krv-assistant .krv-a-quick:empty {\n  display: none;\n}\n\n.krv-assistant .krv-a-chip {\n  border: 1px solid var(--krv-a-line);\n  background: var(--krv-a-bg);\n  color: var(--krv-a-ink);\n  border-radius: 999px;\n  padding: 6px 11px;\n  font-size: 12px;\n  line-height: 1.2;\n  cursor: pointer;\n  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;\n}\n\n.krv-assistant .krv-a-chip:hover {\n  border-color: #93b0f5;\n  background: var(--krv-a-accent-soft);\n  color: var(--krv-a-accent);\n}\n\n/* Handoff links */\n.krv-assistant .krv-a-handoff {\n  flex: 0 0 auto;\n  display: flex;\n  flex-wrap: wrap;\n  gap: 6px;\n  padding: 8px 12px;\n  background: var(--krv-a-bg);\n  border-bottom: 1px solid var(--krv-a-line);\n}\n\n.krv-assistant .krv-a-handoff:empty {\n  display: none;\n  border-bottom: 0;\n  padding: 0;\n}\n\n.krv-assistant .krv-a-handoff a,\n.krv-assistant .krv-a-handoff button.krv-a-chip {\n  font-size: 11.5px;\n  color: var(--krv-a-accent);\n  text-decoration: none;\n  border: 1px solid var(--krv-a-line);\n  border-radius: 999px;\n  padding: 5px 10px;\n  background: var(--krv-a-bg-soft);\n  cursor: pointer;\n  font-family: inherit;\n  line-height: 1.2;\n}\n\n.krv-assistant .krv-a-handoff a:hover,\n.krv-assistant .krv-a-handoff button.krv-a-chip:hover {\n  border-color: #93b0f5;\n  background: var(--krv-a-accent-soft);\n}\n\n/* Lead form */\n.krv-assistant .krv-a-form {\n  display: none;\n  flex: 0 0 auto;\n  flex-direction: column;\n  gap: 8px;\n  padding: 10px 12px 12px;\n  border-top: 1px solid var(--krv-a-line);\n  background: var(--krv-a-bg);\n  max-height: 55%;\n  overflow-y: auto;\n}\n\n.krv-assistant .krv-a-form.is-on {\n  display: flex;\n}\n\n.krv-assistant .krv-a-form-title {\n  margin: 0 0 2px;\n  font-size: 12.5px;\n  font-weight: 650;\n  color: var(--krv-a-ink);\n}\n\n.krv-assistant .krv-a-field {\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n  margin: 0;\n}\n\n.krv-assistant .krv-a-field > span {\n  font-size: 11px;\n  font-weight: 500;\n  color: var(--krv-a-mute);\n}\n\n.krv-assistant .krv-a-field-row {\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 8px;\n}\n\n.krv-assistant .krv-a-form input,\n.krv-assistant .krv-a-form textarea,\n.krv-assistant .krv-a-form select {\n  width: 100%;\n  margin: 0;\n  border: 1px solid var(--krv-a-line);\n  background: var(--krv-a-bg);\n  color: var(--krv-a-ink);\n  border-radius: var(--krv-a-radius-sm);\n  padding: 8px 10px;\n  font-size: 13px;\n  font-family: inherit;\n  line-height: 1.35;\n  min-height: 38px;\n  appearance: none;\n  -webkit-appearance: none;\n}\n\n.krv-assistant .krv-a-form textarea {\n  min-height: 64px;\n  max-height: 100px;\n  resize: vertical;\n}\n\n.krv-assistant .krv-a-form select {\n  background-image: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");\n  background-repeat: no-repeat;\n  background-position: right 10px center;\n  padding-right: 28px;\n}\n\n.krv-assistant .krv-a-form input:focus,\n.krv-assistant .krv-a-form textarea:focus,\n.krv-assistant .krv-a-form select:focus {\n  outline: none;\n  border-color: var(--krv-a-accent);\n  box-shadow: 0 0 0 3px rgba(49, 95, 232, 0.15);\n}\n\n.krv-assistant .krv-a-form input::placeholder,\n.krv-assistant .krv-a-form textarea::placeholder {\n  color: #94a3b8;\n}\n\n.krv-assistant .krv-a-hp {\n  position: absolute !important;\n  left: -10000px !important;\n  width: 1px !important;\n  height: 1px !important;\n  overflow: hidden !important;\n  opacity: 0 !important;\n  pointer-events: none !important;\n}\n\n.krv-assistant .krv-a-form-actions {\n  display: flex;\n  gap: 8px;\n  margin-top: 2px;\n}\n\n.krv-assistant .krv-a-btn {\n  border: 0;\n  border-radius: var(--krv-a-radius-sm);\n  padding: 9px 12px;\n  font-size: 13px;\n  font-weight: 600;\n  font-family: inherit;\n  cursor: pointer;\n  line-height: 1.2;\n  min-height: 38px;\n}\n\n.krv-assistant .krv-a-btn.primary {\n  background: var(--krv-a-accent);\n  color: #fff;\n  flex: 1;\n}\n\n.krv-assistant .krv-a-btn.primary:hover {\n  background: var(--krv-a-accent-h);\n}\n\n.krv-assistant .krv-a-btn.ghost {\n  background: var(--krv-a-bg);\n  color: var(--krv-a-mute);\n  border: 1px solid var(--krv-a-line);\n  flex: 0 0 auto;\n  min-width: 88px;\n}\n\n.krv-assistant .krv-a-btn.ghost:hover {\n  color: var(--krv-a-ink);\n  background: var(--krv-a-bg-soft);\n}\n\n/* Composer */\n.krv-assistant .krv-a-composer {\n  flex: 0 0 auto;\n  display: flex;\n  align-items: flex-end;\n  gap: 8px;\n  padding: 10px 12px 12px;\n  border-top: 1px solid var(--krv-a-line);\n  background: var(--krv-a-bg);\n}\n\n.krv-assistant .krv-a-composer.is-hidden {\n  display: none;\n}\n\n.krv-assistant .krv-a-composer textarea {\n  flex: 1 1 auto;\n  width: 100%;\n  min-height: 40px;\n  max-height: 96px;\n  margin: 0;\n  border: 1px solid var(--krv-a-line);\n  background: var(--krv-a-bg-soft);\n  color: var(--krv-a-ink);\n  border-radius: 12px;\n  padding: 10px 12px;\n  font-size: 13px;\n  font-family: inherit;\n  line-height: 1.4;\n  resize: none;\n}\n\n.krv-assistant .krv-a-composer textarea:focus {\n  outline: none;\n  border-color: var(--krv-a-accent);\n  background: var(--krv-a-bg);\n  box-shadow: 0 0 0 3px rgba(49, 95, 232, 0.12);\n}\n\n.krv-assistant .krv-a-send {\n  flex: 0 0 auto;\n  width: 40px;\n  height: 40px;\n  border: 0;\n  border-radius: 12px;\n  background: var(--krv-a-accent);\n  color: #fff;\n  cursor: pointer;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  padding: 0;\n  font-size: 16px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.krv-assistant .krv-a-send:hover {\n  background: var(--krv-a-accent-h);\n}\n\n.krv-assistant .krv-a-send:disabled {\n  opacity: 0.5;\n  cursor: not-allowed;\n}\n\n/* Mobile width/form */\n@media (max-width: 480px) {\n  .krv-assistant {\n    --krv-a-w: min(calc(100vw - 20px), 400px);\n    width: auto;\n    max-width: calc(100vw - 16px);\n  }\n\n  .krv-assistant .krv-a-field-row {\n    grid-template-columns: 1fr;\n  }\n\n  .krv-assistant .krv-a-bubble svg {\n    width: 22px;\n    height: 22px;\n  }\n}\n\n/* Prefer reduced motion */\n@media (prefers-reduced-motion: reduce) {\n  .krv-assistant .krv-a-bubble {\n    transition: none;\n  }\n}\n";
 
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -89,6 +94,144 @@
     var cap = Math.max(16, Math.floor(vh * 0.35));
     if (stack > cap) stack = cap;
     root.style.setProperty("--krv-a-stack-bottom", stack + "px");
+  }
+
+
+
+  function proactiveHint() {
+    var host = (location.hostname || "").toLowerCase().replace(/^www\./, "");
+    var map = {
+      "bots.krivoshein.site": "Есть вопросы по ботам?",
+      "vps.krivoshein.site": "Нужна помощь с сервером?",
+      "wordpress.krivoshein.site": "Помочь с WordPress?",
+      "direct.krivoshein.site": "Вопросы по Директу?",
+      "landing.krivoshein.site": "Нужен лендинг?",
+      "ai-ready.krivoshein.site": "Подготовить сайт к AI?",
+    };
+    return map[host] || "Нужна помощь?";
+  }
+
+  function isProactiveDismissed() {
+    try {
+      return localStorage.getItem(PROACTIVE_DISMISS_KEY) === "1";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function isProactiveShown() {
+    try {
+      return sessionStorage.getItem(PROACTIVE_SHOWN_KEY) === "1";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function markProactiveShown() {
+    try {
+      sessionStorage.setItem(PROACTIVE_SHOWN_KEY, "1");
+    } catch (e) {}
+  }
+
+  function markProactiveDismissed() {
+    try {
+      localStorage.setItem(PROACTIVE_DISMISS_KEY, "1");
+      sessionStorage.setItem(PROACTIVE_SHOWN_KEY, "1");
+    } catch (e) {}
+  }
+
+  function proactiveDelayMs() {
+    var w = window.innerWidth || 1200;
+    return w < 480 ? PROACTIVE_MS_MOBILE : PROACTIVE_MS;
+  }
+
+  function showNudge(ui, state) {
+    if (!ui || !ui.root) return;
+    if (state.proactiveDone || isProactiveDismissed() || isProactiveShown()) return;
+    if (ui.root.classList.contains("is-open")) return;
+    ui.tipText.textContent = proactiveHint();
+    ui.tip.removeAttribute("hidden");
+    ui.root.classList.add("is-nudge");
+    state.nudgeVisible = true;
+    markProactiveShown();
+    state.proactiveDone = true;
+  }
+
+  function hideNudge(ui, state, dismissed) {
+    if (!ui || !ui.root) return;
+    ui.root.classList.remove("is-nudge");
+    ui.tip.setAttribute("hidden", "hidden");
+    state.nudgeVisible = false;
+    if (dismissed) {
+      markProactiveDismissed();
+      state.proactiveDone = true;
+    }
+  }
+
+  function setupProactive(ui, state) {
+    if (isProactiveDismissed() || isProactiveShown()) {
+      state.proactiveDone = true;
+      return;
+    }
+    state.proactiveDone = false;
+    state.nudgeVisible = false;
+    state.idleTimer = null;
+    state.scrollAccum = 0;
+    state.lastScrollY = window.scrollY || window.pageYOffset || 0;
+
+    function clearIdle() {
+      if (state.idleTimer) {
+        clearTimeout(state.idleTimer);
+        state.idleTimer = null;
+      }
+    }
+
+    function armIdle() {
+      if (state.proactiveDone) return;
+      if (ui.root.classList.contains("is-open")) return;
+      clearIdle();
+      state.idleTimer = setTimeout(function () {
+        showNudge(ui, state);
+      }, proactiveDelayMs());
+    }
+
+    function onActivity(ev) {
+      if (state.proactiveDone && !state.nudgeVisible) return;
+      // soft-ignore tiny mousemove noise: still reset timer
+      if (ev && ev.type === "scroll") {
+        var y = window.scrollY || window.pageYOffset || 0;
+        var dy = Math.abs(y - state.lastScrollY);
+        state.lastScrollY = y;
+        state.scrollAccum += dy;
+        // ignore micro-scroll jitter under threshold for "meaningful" activity flag,
+        // but still reset timer so reading slowly doesn't fire mid-scroll
+        if (dy < 2) return;
+      }
+      if (state.nudgeVisible) {
+        // activity while tip visible: do not auto-hide (user may be reading)
+        return;
+      }
+      armIdle();
+    }
+
+    var opts = { passive: true, capture: true };
+    ["mousemove", "mousedown", "click", "keydown", "touchstart", "touchmove", "wheel", "scroll"].forEach(
+      function (type) {
+        window.addEventListener(type, onActivity, opts);
+      }
+    );
+    window.addEventListener(
+      "focusin",
+      function () {
+        onActivity({ type: "focusin" });
+      },
+      true
+    );
+
+    // start after short delay so initial page load scroll doesn't count as engagement forever
+    setTimeout(armIdle, 800);
+    state._armIdle = armIdle;
+    state._clearIdle = clearIdle;
   }
 
 
@@ -188,6 +331,22 @@
     bubble.setAttribute("aria-label", "Открыть чат");
     bubble.innerHTML = iconChat();
 
+    var tip = el("button", "krv-a-tip");
+    tip.type = "button";
+    tip.setAttribute("aria-label", "Нужна помощь?");
+    tip.setAttribute("hidden", "hidden");
+    var tipText = el("span", "krv-a-tip-text", "Нужна помощь?");
+    var tipX = el("span", "krv-a-tip-x", "×");
+    tipX.setAttribute("role", "button");
+    tipX.setAttribute("aria-label", "Закрыть подсказку");
+    tipX.tabIndex = 0;
+    tip.appendChild(tipText);
+    tip.appendChild(tipX);
+
+    var nudgeWrap = el("div", "krv-a-nudge-wrap");
+    nudgeWrap.appendChild(tip);
+    nudgeWrap.appendChild(bubble);
+
     panel.appendChild(head);
     panel.appendChild(msgs);
     panel.appendChild(quick);
@@ -195,7 +354,7 @@
     panel.appendChild(form);
     panel.appendChild(composer);
     wrap.appendChild(panel);
-    wrap.appendChild(bubble);
+    wrap.appendChild(nudgeWrap);
     document.body.appendChild(wrap);
 
     return {
@@ -211,6 +370,9 @@
       ta: ta,
       send: send,
       bubble: bubble,
+      tip: tip,
+      tipText: tipText,
+      tipX: tipX,
       closeBtn: closeBtn,
     };
   }
@@ -414,29 +576,60 @@
     }
   }
 
+  function openChat(ui, state) {
+    updateStackOffset(ui.root);
+    hideNudge(ui, state, false);
+    if (state._clearIdle) state._clearIdle();
+    state.proactiveDone = true;
+    markProactiveShown();
+    if (!ui.root.classList.contains("is-open")) {
+      openPanel(ui, true);
+    }
+    if (!state.bootstrapped) {
+      bootstrap(ui, state)
+        .then(function () {
+          state.bootstrapped = true;
+        })
+        .catch(function (err) {
+          addMsg(
+            ui,
+            "bot",
+            "Чат временно недоступен. Telegram: https://t.me/DrSlon"
+          );
+          console.warn("[krv-assistant] bootstrap", err);
+        });
+    }
+    setTimeout(function () {
+      ui.ta.focus();
+    }, 40);
+  }
+
   function bind(ui, state) {
     ui.bubble.addEventListener("click", function () {
-      updateStackOffset(ui.root);
-      var open = !ui.root.classList.contains("is-open");
-      openPanel(ui, open);
-      if (open && !state.bootstrapped) {
-        bootstrap(ui, state)
-          .then(function () {
-            state.bootstrapped = true;
-          })
-          .catch(function (err) {
-            addMsg(
-              ui,
-              "bot",
-              "Чат временно недоступен. Telegram: https://t.me/DrSlon"
-            );
-            console.warn("[krv-assistant] bootstrap", err);
-          });
+      if (ui.root.classList.contains("is-open")) {
+        openPanel(ui, false);
+        return;
       }
-      if (open) {
-        setTimeout(function () {
-          ui.ta.focus();
-        }, 40);
+      openChat(ui, state);
+    });
+    ui.tip.addEventListener("click", function (e) {
+      if (e.target === ui.tipX || (e.target && e.target.classList && e.target.classList.contains("krv-a-tip-x"))) {
+        return;
+      }
+      openChat(ui, state);
+    });
+    ui.tipX.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      hideNudge(ui, state, true);
+      if (state._clearIdle) state._clearIdle();
+    });
+    ui.tipX.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        e.stopPropagation();
+        hideNudge(ui, state, true);
+        if (state._clearIdle) state._clearIdle();
       }
     });
     ui.closeBtn.addEventListener("click", function () {
@@ -474,6 +667,7 @@
       handoff: null,
     };
     bind(ui, state);
+    setupProactive(ui, state);
     updateStackOffset(ui.root);
     var onResize = function () {
       updateStackOffset(ui.root);

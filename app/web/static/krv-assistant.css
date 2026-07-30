@@ -55,7 +55,8 @@
 
 /* Only interactive pieces receive clicks */
 .krv-assistant .krv-a-bubble,
-.krv-assistant .krv-a-panel {
+.krv-assistant .krv-a-panel,
+.krv-assistant .krv-a-tip {
   pointer-events: auto;
 }
 
@@ -146,6 +147,121 @@
 .krv-assistant.is-open .krv-a-bubble {
   background: #1e293b;
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.2);
+}
+
+/* Soft proactive nudge */
+.krv-assistant .krv-a-nudge-wrap {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.krv-assistant[data-side="left"] .krv-a-nudge-wrap {
+  flex-direction: row-reverse;
+}
+
+.krv-assistant .krv-a-tip {
+  display: none;
+  max-width: min(220px, calc(100vw - 88px));
+  padding: 8px 10px 8px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--krv-a-line);
+  background: var(--krv-a-bg);
+  color: var(--krv-a-ink);
+  box-shadow: var(--krv-a-shadow);
+  font-size: 12.5px;
+  line-height: 1.35;
+  position: relative;
+  cursor: pointer;
+  text-align: left;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.krv-assistant.is-nudge .krv-a-tip {
+  display: inline-flex;
+  animation: krv-a-tip-in 0.28s ease;
+}
+
+.krv-assistant .krv-a-tip-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.krv-assistant .krv-a-tip-x {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: var(--krv-a-mute);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 0 0 4px;
+  margin: -2px 0 0;
+}
+
+.krv-assistant .krv-a-tip-x:hover {
+  color: var(--krv-a-ink);
+}
+
+/* subtle pulse on bubble when nudging */
+.krv-assistant.is-nudge .krv-a-bubble {
+  box-shadow:
+    0 0 0 0 rgba(49, 95, 232, 0.45),
+    0 8px 24px rgba(49, 95, 232, 0.35);
+  animation: krv-a-pulse 1.8s ease-out infinite;
+}
+
+.krv-assistant.is-open.is-nudge .krv-a-bubble {
+  animation: none;
+}
+
+@keyframes krv-a-pulse {
+  0% {
+    box-shadow:
+      0 0 0 0 rgba(49, 95, 232, 0.4),
+      0 8px 24px rgba(49, 95, 232, 0.35);
+  }
+  70% {
+    box-shadow:
+      0 0 0 12px rgba(49, 95, 232, 0),
+      0 8px 24px rgba(49, 95, 232, 0.28);
+  }
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(49, 95, 232, 0),
+      0 8px 24px rgba(49, 95, 232, 0.35);
+  }
+}
+
+@keyframes krv-a-tip-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 480px) {
+  .krv-assistant .krv-a-tip {
+    max-width: min(168px, calc(100vw - 78px));
+    font-size: 12px;
+    padding: 7px 8px 7px 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .krv-assistant.is-nudge .krv-a-bubble {
+    animation: none;
+  }
+  .krv-assistant.is-nudge .krv-a-tip {
+    animation: none;
+  }
 }
 
 /* —— Panel —— */
