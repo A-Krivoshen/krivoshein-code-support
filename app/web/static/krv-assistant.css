@@ -72,19 +72,20 @@
   align-items: flex-start;
 }
 
-/* Mobile: clear fixed .mobile-cta-bar (~64–72px) even before JS measures */
+/* Mobile: clear fixed .mobile-cta-bar (~64–90px + safe-area) before JS measures.
+ * Prefer a generous fallback so bubble never sits on CTA buttons. */
 @media (max-width: 767.98px) {
   .krv-assistant {
-    --krv-a-stack-bottom: 76px;
+    --krv-a-stack-bottom: 96px;
     --krv-a-edge: 12px;
     --krv-a-bubble-size: 52px;
   }
 }
 
-/* Very small phones (SE / 375) */
+/* Very small phones (SE / 320–375) — taller bar when labels wrap */
 @media (max-width: 380px) {
   .krv-assistant {
-    --krv-a-stack-bottom: 80px;
+    --krv-a-stack-bottom: 104px;
     --krv-a-edge: 10px;
     --krv-a-bubble-size: 48px;
     --krv-a-gap: 8px;
