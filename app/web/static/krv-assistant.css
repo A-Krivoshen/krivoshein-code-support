@@ -332,37 +332,48 @@
   padding-right: 4px;
 }
 
+.krv-assistant .krv-a-head-left {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.krv-assistant .krv-a-close {
+  flex: 0 0 auto !important;
+}
+
 .krv-assistant .krv-a-head h2,
 .krv-assistant .krv-a-head .krv-a-title {
   margin: 0 !important;
   padding: 0 !important;
-  font-size: 13px !important;
+  /* Full «Помощник Dr.Slon» / «Dr.Slon Assistant» must fit 360px head */
+  font-size: 12px !important;
   font-weight: 650 !important;
   letter-spacing: -0.015em !important;
   color: var(--krv-a-ink) !important;
-  line-height: 1.3 !important;
-  white-space: normal !important;
+  line-height: 1.25 !important;
+  white-space: nowrap !important;
   overflow: visible !important;
-  text-overflow: unset !important;
-  word-break: break-word !important;
-  max-width: 100% !important;
+  text-overflow: clip !important;
+  max-width: none !important;
   text-transform: none !important;
+  flex-shrink: 0 !important;
 }
 
 .krv-assistant .krv-a-head p,
 .krv-assistant .krv-a-head .krv-a-sub {
   margin: 2px 0 0 !important;
   padding: 0 !important;
-  font-size: 11.5px !important;
+  font-size: 11px !important;
   font-weight: 400 !important;
   color: var(--krv-a-mute) !important;
   line-height: 1.3 !important;
-  white-space: normal !important;
+  white-space: nowrap !important;
   overflow: hidden !important;
-  display: -webkit-box !important;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  text-overflow: ellipsis !important;
+  max-width: 100% !important;
   text-transform: none !important;
+  display: block !important;
 }
 
 .krv-assistant .krv-a-close {
@@ -735,71 +746,226 @@
 }
 
 
-/* ========== Theme: dark (site data-theme or system preference) ========== */
-html[data-theme="dark"] .krv-assistant {
+/* ========== Theme: dark (isolated from landing Tailwind) ==========
+ * Triggers:
+ *  - html[data-theme="dark"] (landings + WP theme toggle)
+ *  - .krv-assistant.krv-a-dark (JS class from prefers-color-scheme / classes)
+ */
+html[data-theme="dark"] .krv-assistant,
+.krv-assistant.krv-a-dark {
   --krv-a-bg: #121a2b;
   --krv-a-bg-soft: #0c1320;
   --krv-a-bg-msg: #152238;
-  --krv-a-line: #2e3c58;
+  --krv-a-line: #3d5a9a;
   --krv-a-ink: #e8eefc;
-  --krv-a-mute: #a8b6d4;
+  --krv-a-mute: #b6c4e0;
   --krv-a-accent: #5b8cff;
   --krv-a-accent-h: #7aa3ff;
   --krv-a-accent-soft: #1a2744;
   --krv-a-user: #315fe8;
-  --krv-a-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  --krv-a-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+  color: var(--krv-a-ink) !important;
 }
 
-html[data-theme="dark"] .krv-assistant .krv-a-bubble {
-  box-shadow: 0 8px 24px rgba(49, 95, 232, 0.45);
+html[data-theme="dark"] .krv-assistant .krv-a-panel,
+html[data-theme="dark"] .krv-assistant .krv-a-head,
+html[data-theme="dark"] .krv-assistant .krv-a-msgs,
+html[data-theme="dark"] .krv-assistant .krv-a-quick,
+html[data-theme="dark"] .krv-assistant .krv-a-handoff,
+html[data-theme="dark"] .krv-assistant .krv-a-form,
+html[data-theme="dark"] .krv-assistant .krv-a-composer,
+.krv-assistant.krv-a-dark .krv-a-panel,
+.krv-assistant.krv-a-dark .krv-a-head,
+.krv-assistant.krv-a-dark .krv-a-msgs,
+.krv-assistant.krv-a-dark .krv-a-quick,
+.krv-assistant.krv-a-dark .krv-a-handoff,
+.krv-assistant.krv-a-dark .krv-a-form,
+.krv-assistant.krv-a-dark .krv-a-composer {
+  background: var(--krv-a-bg) !important;
+  border-color: var(--krv-a-line) !important;
+  color: var(--krv-a-ink) !important;
 }
 
-html[data-theme="dark"] .krv-assistant.is-open .krv-a-bubble {
-  background: #243044;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+html[data-theme="dark"] .krv-assistant .krv-a-msgs,
+.krv-assistant.krv-a-dark .krv-a-msgs {
+  background: var(--krv-a-bg-soft) !important;
 }
 
-html[data-theme="dark"] .krv-assistant .krv-a-msg.bot {
-  background: #152238;
-  border-color: #2e3c58;
+html[data-theme="dark"] .krv-assistant .krv-a-head,
+.krv-assistant.krv-a-dark .krv-a-head {
+  border-bottom: 1px solid var(--krv-a-line) !important;
+}
+
+html[data-theme="dark"] .krv-assistant .krv-a-handoff,
+html[data-theme="dark"] .krv-assistant .krv-a-composer,
+html[data-theme="dark"] .krv-assistant .krv-a-form,
+.krv-assistant.krv-a-dark .krv-a-handoff,
+.krv-assistant.krv-a-dark .krv-a-composer,
+.krv-assistant.krv-a-dark .krv-a-form {
+  border-top-color: var(--krv-a-line) !important;
+  border-bottom-color: var(--krv-a-line) !important;
+}
+
+html[data-theme="dark"] .krv-assistant .krv-a-title,
+html[data-theme="dark"] .krv-assistant .krv-a-head h2,
+.krv-assistant.krv-a-dark .krv-a-title,
+.krv-assistant.krv-a-dark .krv-a-head h2 {
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .krv-assistant .krv-a-sub,
+html[data-theme="dark"] .krv-assistant .krv-a-head p,
+html[data-theme="dark"] .krv-assistant .krv-a-typing,
+html[data-theme="dark"] .krv-assistant .krv-a-msg.sys,
+.krv-assistant.krv-a-dark .krv-a-sub,
+.krv-assistant.krv-a-dark .krv-a-head p,
+.krv-assistant.krv-a-dark .krv-a-typing,
+.krv-assistant.krv-a-dark .krv-a-msg.sys {
+  color: var(--krv-a-mute) !important;
+}
+
+html[data-theme="dark"] .krv-assistant .krv-a-avatar,
+.krv-assistant.krv-a-dark .krv-a-avatar {
+  background: var(--krv-a-accent-soft) !important;
+  color: var(--krv-a-accent) !important;
+}
+
+html[data-theme="dark"] .krv-assistant .krv-a-close,
+.krv-assistant.krv-a-dark .krv-a-close {
+  color: var(--krv-a-mute) !important;
+  background: transparent !important;
+}
+
+html[data-theme="dark"] .krv-assistant .krv-a-close:hover,
+.krv-assistant.krv-a-dark .krv-a-close:hover {
+  color: #fff !important;
+  background: #1a2744 !important;
+}
+
+html[data-theme="dark"] .krv-assistant .krv-a-msg.bot,
+.krv-assistant.krv-a-dark .krv-a-msg.bot {
+  background: #152238 !important;
+  border: 1px solid var(--krv-a-line) !important;
+  color: var(--krv-a-ink) !important;
+}
+
+html[data-theme="dark"] .krv-assistant .krv-a-msg.user,
+.krv-assistant.krv-a-dark .krv-a-msg.user {
+  background: #315fe8 !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+html[data-theme="dark"] .krv-assistant .krv-a-chip,
+html[data-theme="dark"] .krv-assistant .krv-a-handoff a,
+html[data-theme="dark"] .krv-assistant .krv-a-handoff button,
+.krv-assistant.krv-a-dark .krv-a-chip,
+.krv-assistant.krv-a-dark .krv-a-handoff a,
+.krv-assistant.krv-a-dark .krv-a-handoff button {
+  background: #152238 !important;
+  border: 1px solid var(--krv-a-line) !important;
+  color: var(--krv-a-ink) !important;
 }
 
 html[data-theme="dark"] .krv-assistant .krv-a-chip:hover,
-html[data-theme="dark"] .krv-assistant .krv-a-handoff a:hover {
-  border-color: #5b8cff;
-  background: #1a2744;
-  color: #c7d7ff;
+html[data-theme="dark"] .krv-assistant .krv-a-handoff a:hover,
+html[data-theme="dark"] .krv-assistant .krv-a-handoff button:hover,
+.krv-assistant.krv-a-dark .krv-a-chip:hover,
+.krv-assistant.krv-a-dark .krv-a-handoff a:hover,
+.krv-assistant.krv-a-dark .krv-a-handoff button:hover {
+  background: #1a2744 !important;
+  border-color: #5b8cff !important;
+  color: #c7d7ff !important;
 }
 
 html[data-theme="dark"] .krv-assistant .krv-a-form input,
 html[data-theme="dark"] .krv-assistant .krv-a-form textarea,
 html[data-theme="dark"] .krv-assistant .krv-a-form select,
-html[data-theme="dark"] .krv-assistant .krv-a-composer textarea {
-  background: #0c1320;
-  border-color: #2e3c58;
-  color: #e8eefc;
+html[data-theme="dark"] .krv-assistant .krv-a-composer textarea,
+.krv-assistant.krv-a-dark .krv-a-form input,
+.krv-assistant.krv-a-dark .krv-a-form textarea,
+.krv-assistant.krv-a-dark .krv-a-form select,
+.krv-assistant.krv-a-dark .krv-a-composer textarea {
+  background: #0c1320 !important;
+  border: 1px solid var(--krv-a-line) !important;
+  color: #e8eefc !important;
 }
 
-html[data-theme="dark"] .krv-assistant .krv-a-tip {
-  background: #152238;
-  border-color: #2e3c58;
-  color: #e8eefc;
+html[data-theme="dark"] .krv-assistant .krv-a-form input::placeholder,
+html[data-theme="dark"] .krv-assistant .krv-a-form textarea::placeholder,
+html[data-theme="dark"] .krv-assistant .krv-a-composer textarea::placeholder,
+.krv-assistant.krv-a-dark .krv-a-form input::placeholder,
+.krv-assistant.krv-a-dark .krv-a-form textarea::placeholder,
+.krv-assistant.krv-a-dark .krv-a-composer textarea::placeholder {
+  color: #7a8aab !important;
 }
 
-/* System dark only when site does not force light */
+html[data-theme="dark"] .krv-assistant .krv-a-btn.ghost,
+.krv-assistant.krv-a-dark .krv-a-btn.ghost {
+  background: #152238 !important;
+  border: 1px solid var(--krv-a-line) !important;
+  color: var(--krv-a-mute) !important;
+}
+
+html[data-theme="dark"] .krv-assistant .krv-a-btn.primary,
+html[data-theme="dark"] .krv-assistant .krv-a-send,
+.krv-assistant.krv-a-dark .krv-a-btn.primary,
+.krv-assistant.krv-a-dark .krv-a-send {
+  background: #315fe8 !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+html[data-theme="dark"] .krv-assistant .krv-a-btn.primary:hover,
+html[data-theme="dark"] .krv-assistant .krv-a-send:hover,
+.krv-assistant.krv-a-dark .krv-a-btn.primary:hover,
+.krv-assistant.krv-a-dark .krv-a-send:hover {
+  background: #244ac2 !important;
+}
+
+/* Bubble stays brand blue in dark (not muddy slate) */
+html[data-theme="dark"] .krv-assistant .krv-a-bubble,
+.krv-assistant.krv-a-dark .krv-a-bubble {
+  background: #315fe8 !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  box-shadow: 0 8px 24px rgba(49, 95, 232, 0.5) !important;
+}
+
+html[data-theme="dark"] .krv-assistant.is-open .krv-a-bubble,
+.krv-assistant.krv-a-dark.is-open .krv-a-bubble {
+  background: #244ac2 !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4) !important;
+}
+
+html[data-theme="dark"] .krv-assistant .krv-a-tip,
+.krv-assistant.krv-a-dark .krv-a-tip {
+  background: #152238 !important;
+  border: 1px solid var(--krv-a-line) !important;
+  color: var(--krv-a-ink) !important;
+}
+
+html[data-theme="dark"] .krv-assistant .krv-a-tip-x,
+.krv-assistant.krv-a-dark .krv-a-tip-x {
+  color: var(--krv-a-mute) !important;
+}
+
+/* System dark only when site does not force light (vars fallback before JS class) */
 @media (prefers-color-scheme: dark) {
-  html:not([data-theme="light"]) .krv-assistant {
+  html:not([data-theme="light"]) .krv-assistant:not(.krv-a-dark) {
     --krv-a-bg: #121a2b;
     --krv-a-bg-soft: #0c1320;
     --krv-a-bg-msg: #152238;
-    --krv-a-line: #2e3c58;
+    --krv-a-line: #3d5a9a;
     --krv-a-ink: #e8eefc;
-    --krv-a-mute: #a8b6d4;
+    --krv-a-mute: #b6c4e0;
     --krv-a-accent: #5b8cff;
     --krv-a-accent-h: #7aa3ff;
     --krv-a-accent-soft: #1a2744;
     --krv-a-user: #315fe8;
-    --krv-a-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+    --krv-a-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
   }
 }
 
@@ -814,8 +980,8 @@ html[data-theme="dark"] .krv-assistant .krv-a-tip {
 .krv-assistant .krv-a-form textarea,
 .krv-assistant .krv-a-form select,
 .krv-assistant .krv-a-composer textarea {
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease,
-    box-shadow 0.2s ease;
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 /* Prefer reduced motion */

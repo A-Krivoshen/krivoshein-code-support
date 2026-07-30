@@ -44,6 +44,16 @@ def handoff_payload() -> dict[str, str]:
     return dict(HANDOFF)
 
 
+
+def _looks_english(text: str) -> bool:
+    """Heuristic: mostly Latin letters → English."""
+    letters = [c for c in (text or "") if c.isalpha()]
+    if len(letters) < 3:
+        return False
+    latin = sum(1 for c in letters if ("a" <= c.lower() <= "z"))
+    return (latin / len(letters)) >= 0.6
+
+
 class WebAssistantService:
     def __init__(
         self,
@@ -124,14 +134,22 @@ class WebAssistantService:
         limit = self._settings.web_rate_limit_per_hour
 
         if await self._store.is_rate_limited(rate_key, kind="chat", limit_per_hour=limit):
+            en = _looks_english(message)
             return {
                 "session_id": session_id,
                 "reply": (
-                    "Слишком много сообщений за час. "
-                    "Напишите в Telegram @DrSlon или на https://krivoshein.site/contacts/"
+                    "Too many messages this hour. "
+                    "Please write on Telegram @DrSlon or https://krivoshein.site/contacts/"
+                    if en
+                    else (
+                        "Слишком много сообщений за час. "
+                        "Напишите в Telegram @DrSlon или на https://krivoshein.site/contacts/"
+                    )
                 ),
                 "suggest_lead": True,
-                "quick_replies": ["Оставить заявку", "Telegram"],
+                "quick_replies": (
+                    ["Leave a lead", "Telegram"] if en else ["Оставить заявку", "Telegram"]
+                ),
             }
 
         await self._store.touch_session(session_id, host=host_n, path=path_n)
@@ -145,6 +163,12 @@ class WebAssistantService:
             path=path_n,
             knowledge=knowledge,
             profile=profile,
+        )
+        # Reinforce language matching for this turn
+        system_prompt += (
+            "\n\n## Current turn language\n"
+            "Reply strictly in the same language as the latest user message "
+            "(Russian or English). Do not mix languages."
         )
 
         history = await self._store.get_recent_messages(
@@ -199,6 +223,26 @@ class WebAssistantService:
     def _fallback_reply(self, message: str, profile: dict) -> str:
         low = message.lower()
         label = str(profile.get("label") or "услугам")
+        en = _looks_english(message)
+        if en:
+            if any(w in low for w in ("price", "cost", "how much", "pricing")):
+                return (
+                    f"Pricing for «{label}» is on https://krivoshein.site/prays-list/ "
+                    "and this page. Exact quote after a short brief. "
+                    "You can leave a lead here or write Telegram @DrSlon."
+                )
+            if any(w in low for w in ("lead", "order", "contact", "hire")):
+                return (
+                    "Use the «Leave a lead» button in this chat (task + contact), "
+                    "or Telegram @DrSlon / MAX, or https://krivoshein.site/contacts/"
+                )
+            if "telegram" in low or "@drslon" in low:
+                return "Telegram: https://t.me/DrSlon"
+            return (
+                f"Briefly about «{label}»: describe the task — I'll suggest a format "
+                "and “from” pricing. Ready to talk — leave a lead or write @DrSlon. "
+                "Pricing: https://krivoshein.site/prays-list/"
+            )
         if any(w in low for w in ("цена", "стоим", "прайс", "сколько")):
             return (
                 f"Ориентиры по «{label}» — в прайсе: https://krivoshein.site/prays-list/ "
