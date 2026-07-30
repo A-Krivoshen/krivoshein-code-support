@@ -54,11 +54,45 @@ class Settings(BaseSettings):
     # TTL истории диалога (часы)
     llm_history_ttl_hours: int = Field(default=24, alias="LLM_HISTORY_TTL_HOURS")
 
+    # --- Web AI Popup Assistant ---
+    web_assistant_enabled: bool = Field(default=True, alias="WEB_ASSISTANT_ENABLED")
+    # Comma-separated origins. Empty or * → allow *.krivoshein.site
+    web_cors_origins: str = Field(
+        default=(
+            "https://bots.krivoshein.site,"
+            "https://wordpress.krivoshein.site,"
+            "https://vps.krivoshein.site,"
+            "https://direct.krivoshein.site,"
+            "https://landing.krivoshein.site,"
+            "https://ai-ready.krivoshein.site,"
+            "https://krivoshein.site,"
+            "https://www.krivoshein.site,"
+            "https://support.krivoshein.site"
+        ),
+        alias="WEB_CORS_ORIGINS",
+    )
+    web_rate_limit_per_hour: int = Field(default=30, alias="WEB_RATE_LIMIT_PER_HOUR")
+    web_hub_llms_path: str = Field(
+        default="/var/www/krivoshein.site/htdocs/llms.txt",
+        alias="WEB_HUB_LLMS_PATH",
+    )
+    web_sites_root: str = Field(default="/var/www", alias="WEB_SITES_ROOT")
+    web_knowledge_ttl_seconds: float = Field(
+        default=600.0,
+        alias="WEB_KNOWLEDGE_TTL_SECONDS",
+    )
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
         "extra": "ignore",
     }
+
+    def web_cors_origin_list(self) -> list[str]:
+        raw = (self.web_cors_origins or "").strip()
+        if not raw or raw == "*":
+            return ["*"]
+        return [part.strip().rstrip("/") for part in raw.split(",") if part.strip()]
 
 
 settings = Settings()

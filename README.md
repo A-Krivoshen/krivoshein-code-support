@@ -189,3 +189,14 @@ tests/
 
 Проект для ИП **Кривошеин А.С.**  
 Сайт: [krivoshein.site](https://krivoshein.site) · контакты: [krivoshein.site/contacts](https://krivoshein.site/contacts/)
+
+---
+
+## Web AI Popup Assistant
+
+Лёгкий чат-виджет для сайтов (замена Replain).  
+Документация: [docs/WEB_ASSISTANT.md](docs/WEB_ASSISTANT.md)
+
+- API: `https://support.krivoshein.site/api/v1/*`
+- Widget: `https://support.krivoshein.site/widget/krv-assistant.js`
+- Тест: https://bots.krivoshein.site/ (bubble слева; Replain справа)

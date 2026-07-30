@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.bot.router import BotRouter
 from app.config import settings
@@ -17,6 +18,10 @@ from app.logging_config import setup_logging
 from app.max_api import MaxApiClient
 from app.max_api.exceptions import MaxApiError
 from app.tickets.storage import TicketStorage
+from app.web.knowledge import KnowledgeLoader
+from app.web.router import router as web_router
+from app.web.service import WebAssistantService
+from app.web.store import WebStore
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +67,24 @@ def _verify_webhook_secret(request: Request) -> None:
         raise HTTPException(status_code=403, detail="Forbidden")
 
 
+def _cors_allow_origin_list() -> list[str]:
+    origins = settings.web_cors_origin_list()
+    if origins == ["*"]:
+        # Explicit list preferred for credentialed-free public widget
+        return [
+            "https://bots.krivoshein.site",
+            "https://wordpress.krivoshein.site",
+            "https://vps.krivoshein.site",
+            "https://direct.krivoshein.site",
+            "https://landing.krivoshein.site",
+            "https://ai-ready.krivoshein.site",
+            "https://krivoshein.site",
+            "https://www.krivoshein.site",
+            "https://support.krivoshein.site",
+        ]
+    return origins
+
+
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     setup_logging(settings.log_level)
@@ -89,7 +112,32 @@ async def lifespan(application: FastAPI):
         llm_service=llm_service,
         chat_memory=chat_memory,
     )
+
+    # Web AI assistant
+    web_store = WebStore(db)
+    await web_store.init()
+    knowledge = KnowledgeLoader(
+        hub_llms_path=settings.web_hub_llms_path,
+        sites_root=settings.web_sites_root,
+        ttl_seconds=settings.web_knowledge_ttl_seconds,
+    )
+    web_assistant = WebAssistantService(
+        web_store,
+        max_client=client,
+        knowledge=knowledge,
+    )
+    application.state.web_store = web_store
+    application.state.web_assistant = web_assistant
+    application.state.knowledge = knowledge
+    logger.info(
+        "Web assistant enabled=%s cors=%s",
+        settings.web_assistant_enabled,
+        len(_cors_allow_origin_list()),
+    )
+
     yield
+
+    await web_assistant.aclose()
     await llm_service.aclose()
     await client.aclose()
     await db.close()
@@ -98,9 +146,23 @@ async def lifespan(application: FastAPI):
 def create_app() -> FastAPI:
     application = FastAPI(title="Krivoshein Code Support", lifespan=lifespan)
 
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_allow_origin_list(),
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "Accept"],
+        max_age=600,
+    )
+
+    application.include_router(web_router)
+
     @application.get("/health")
-    async def health() -> dict[str, str]:
-        return {"status": "ok"}
+    async def health() -> dict[str, Any]:
+        return {
+            "status": "ok",
+            "web_assistant": settings.web_assistant_enabled,
+        }
 
     @application.post(settings.webhook_path)
     async def receive_update(request: Request) -> dict[str, bool]:

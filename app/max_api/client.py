@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import ssl
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -7,15 +9,42 @@ import httpx
 from app.max_api.exceptions import MaxApiRequestError, MaxApiResponseError
 from app.max_api.types import BotInfo, ReplyMarkup, SendMessageResponse
 
+# platform-api2.max.ru uses Russian Trusted CA (Минцифры).
+# httpx defaults to certifi, which does not include it.
+_SYSTEM_CA_BUNDLE = Path("/etc/ssl/certs/ca-certificates.crt")
+_EXTRA_CA_FILES = (
+    Path("/usr/local/share/ca-certificates/russian_trusted_root_ca.crt"),
+    Path("/usr/local/share/ca-certificates/russian_trusted_sub_ca.crt"),
+    Path("/usr/local/share/ca-certificates/russian/russian_trusted_root_ca.crt"),
+    Path("/usr/local/share/ca-certificates/russian/russian_trusted_sub_ca.crt"),
+)
+
+
+def _build_ssl_verify() -> ssl.SSLContext | bool:
+    """Trust system CAs plus Russian Trusted CA for MAX platform-api2."""
+    if _SYSTEM_CA_BUNDLE.is_file():
+        ctx = ssl.create_default_context(cafile=str(_SYSTEM_CA_BUNDLE))
+    else:
+        ctx = ssl.create_default_context()
+
+    for ca_path in _EXTRA_CA_FILES:
+        if ca_path.is_file():
+            try:
+                ctx.load_verify_locations(cafile=str(ca_path))
+            except ssl.SSLError:
+                continue
+    return ctx
+
 
 class MaxApiClient:
-    def __init__(self, token: str, base_url: str = "https://platform-api.max.ru") -> None:
+    def __init__(self, token: str, base_url: str = "https://platform-api2.max.ru") -> None:
         self.token = token
         self.base_url = base_url.rstrip("/")
         self.http = httpx.AsyncClient(
             base_url=self.base_url,
             headers={"Authorization": token} if token else {},
             timeout=30.0,
+            verify=_build_ssl_verify(),
         )
 
     async def aclose(self) -> None:

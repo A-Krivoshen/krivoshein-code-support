@@ -13,7 +13,7 @@ X-Max-Bot-Api-Secret on every webhook delivery.
 
 Alternative via curl:
 
-    curl -X POST "https://platform-api.max.ru/subscriptions" \\
+    curl -X POST "https://platform-api2.max.ru/subscriptions" \\
       -H "Authorization: $MAX_BOT_TOKEN" \\
       -H "Content-Type: application/json" \\
       -d '{
