@@ -32,14 +32,18 @@
     )
   );
 
-  position: fixed;
-  z-index: var(--krv-a-z);
-  right: max(var(--krv-a-edge), env(safe-area-inset-right, 0px));
+  /* !important: landings force body children to position:relative in dark
+     (theme-i18n matrix stacking). Without this the widget ends up at page
+     bottom instead of floating in the viewport. */
+  position: fixed !important;
+  z-index: var(--krv-a-z) !important;
+  top: auto !important;
+  left: auto !important;
+  right: max(var(--krv-a-edge), env(safe-area-inset-right, 0px)) !important;
   bottom: calc(
     var(--krv-a-stack-bottom) + env(safe-area-inset-bottom, 0px)
-  );
-  left: auto;
-  display: flex;
+  ) !important;
+  display: flex !important;
   flex-direction: column;
   align-items: flex-end;
   gap: var(--krv-a-gap);
@@ -51,6 +55,8 @@
   /* Don't trap page scroll when closed */
   pointer-events: none;
   max-width: calc(100vw - 16px);
+  transform: none !important;
+  filter: none !important;
 }
 
 /* Only interactive pieces receive clicks */
@@ -61,8 +67,8 @@
 }
 
 .krv-assistant[data-side="left"] {
-  left: max(var(--krv-a-edge), env(safe-area-inset-left, 0px));
-  right: auto;
+  left: max(var(--krv-a-edge), env(safe-area-inset-left, 0px)) !important;
+  right: auto !important;
   align-items: flex-start;
 }
 
