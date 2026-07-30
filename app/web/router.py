@@ -126,6 +126,7 @@ async def chat(body: ChatRequest, request: Request) -> ChatResponse:
         message=body.message,
         client_ip=_client_ip(request),
         honeypot=body.website,
+        origin=request.headers.get("Origin"),
     )
     return ChatResponse(**result)
 
@@ -149,6 +150,7 @@ async def lead(body: LeadRequest, request: Request) -> LeadResponse:
         client_ip=_client_ip(request),
         user_agent=request.headers.get("User-Agent") or "",
         honeypot=body.website,
+        origin=request.headers.get("Origin"),
     )
     handoff = result.get("handoff")
     return LeadResponse(

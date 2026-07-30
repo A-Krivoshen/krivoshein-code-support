@@ -163,11 +163,16 @@ class WebStore:
         rate_key: str,
         *,
         kind: str,
-        limit_per_hour: int,
+        limit: int | None = None,
+        window_hours: float = 1.0,
+        limit_per_hour: int | None = None,
     ) -> bool:
-        if limit_per_hour <= 0:
+        """True if count of events for key/kind in the last window_hours >= limit."""
+        cap = limit if limit is not None else limit_per_hour
+        if cap is None or cap <= 0:
             return False
-        since = _isoformat(_utcnow() - timedelta(hours=1))
+        hours = max(0.01, float(window_hours))
+        since = _isoformat(_utcnow() - timedelta(hours=hours))
         cursor = await self._db.execute(
             """
             SELECT COUNT(*) FROM web_rate_log
@@ -178,7 +183,7 @@ class WebStore:
         row = await cursor.fetchone()
         await cursor.close()
         count = int(row[0]) if row else 0
-        return count >= limit_per_hour
+        return count >= cap
 
     async def record_rate(self, rate_key: str, *, kind: str) -> None:
         await self._db.execute(
@@ -186,6 +191,23 @@ class WebStore:
             (rate_key, kind, _isoformat(_utcnow())),
         )
         await self._db.commit()
+
+    async def count_leads_for_ip(self, client_ip: str, *, hours: float = 24.0) -> int:
+        """How many real leads were saved for this IP in the last N hours."""
+        ip = (client_ip or "").strip()
+        if not ip or ip == "unknown":
+            return 0
+        since = _isoformat(_utcnow() - timedelta(hours=max(0.01, float(hours))))
+        cursor = await self._db.execute(
+            """
+            SELECT COUNT(*) FROM web_leads
+            WHERE client_ip = ? AND created_at >= ?
+            """,
+            (ip, since),
+        )
+        row = await cursor.fetchone()
+        await cursor.close()
+        return int(row[0]) if row else 0
 
     async def save_lead(
         self,

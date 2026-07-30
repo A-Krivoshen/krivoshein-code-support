@@ -54,6 +54,35 @@ def _looks_english(text: str) -> bool:
     return (latin / len(letters)) >= 0.6
 
 
+def _host_from_originish(value: str | None) -> str:
+    """Extract bare hostname from Origin header or host field."""
+    raw = (value or "").strip()
+    if not raw:
+        return ""
+    from urllib.parse import urlparse
+
+    if "://" in raw:
+        try:
+            return normalize_host(urlparse(raw).netloc or "")
+        except Exception:
+            return ""
+    return normalize_host(raw)
+
+
+def is_own_ecosystem_origin(origin: str | None, host: str | None = None) -> bool:
+    """True for krivoshein.site / *.krivoshein.site (landings + hub).
+
+    External public embeds (drslon.ru, GitHub Pages, …) get stricter limits.
+    """
+    for raw in (origin, host):
+        h = _host_from_originish(raw)
+        if not h:
+            continue
+        if h == "krivoshein.site" or h.endswith(".krivoshein.site"):
+            return True
+    return False
+
+
 class WebAssistantService:
     def __init__(
         self,
@@ -117,10 +146,16 @@ class WebAssistantService:
         message: str,
         client_ip: str,
         honeypot: str = "",
+        origin: str | None = None,
     ) -> dict:
         if honeypot.strip():
-            # silent success for bots
-            logger.info("Web chat honeypot trip ip=%s", client_ip)
+            # silent success for bots — no chat recorded
+            logger.info(
+                "Web rate/honeypot endpoint=chat reason=honeypot ip=%s origin=%s host=%s",
+                client_ip,
+                origin or "",
+                host,
+            )
             return {
                 "session_id": session_id,
                 "reply": "Спасибо! Если вопрос срочный — напишите в Telegram @DrSlon.",
@@ -131,9 +166,25 @@ class WebAssistantService:
         host_n = normalize_host(host)
         path_n = path or "/"
         rate_key = f"ip:{client_ip}"
-        limit = self._settings.web_rate_limit_per_hour
+        own = is_own_ecosystem_origin(origin, host_n)
+        limit = (
+            self._settings.web_rate_limit_per_hour
+            if own
+            else self._settings.web_rate_limit_external_per_hour
+        )
 
-        if await self._store.is_rate_limited(rate_key, kind="chat", limit_per_hour=limit):
+        if await self._store.is_rate_limited(
+            rate_key, kind="chat", limit=limit, window_hours=1.0
+        ):
+            logger.warning(
+                "Web rate/limit endpoint=chat reason=hourly_limit ip=%s origin=%s "
+                "host=%s limit=%s own=%s",
+                client_ip,
+                origin or "",
+                host_n,
+                limit,
+                own,
+            )
             en = _looks_english(message)
             return {
                 "session_id": session_id,
@@ -339,9 +390,16 @@ class WebAssistantService:
         client_ip: str,
         user_agent: str,
         honeypot: str = "",
+        origin: str | None = None,
     ) -> dict:
         if honeypot.strip():
-            logger.info("Web lead honeypot trip ip=%s", client_ip)
+            # Fake success — do not create lead or notify admin
+            logger.info(
+                "Web rate/honeypot endpoint=lead reason=honeypot ip=%s origin=%s host=%s",
+                client_ip,
+                origin or "",
+                host,
+            )
             return {
                 "ok": True,
                 "lead_id": None,
@@ -352,20 +410,58 @@ class WebAssistantService:
         host_n = normalize_host(host)
         path_n = path or "/"
         rate_key = f"ip:{client_ip}"
-        lead_limit = max(3, self._settings.web_rate_limit_per_hour // 4)
+        own = is_own_ecosystem_origin(origin, host_n)
+        lead_limit = (
+            self._settings.web_lead_limit_per_hour
+            if own
+            else self._settings.web_lead_limit_external_per_hour
+        )
+        day_cap = self._settings.web_lead_limit_per_day_ip
 
         if await self._store.is_rate_limited(
-            rate_key, kind="lead", limit_per_hour=lead_limit
+            rate_key, kind="lead", limit=lead_limit, window_hours=1.0
         ):
+            logger.warning(
+                "Web rate/limit endpoint=lead reason=hourly_limit ip=%s origin=%s "
+                "host=%s limit=%s own=%s",
+                client_ip,
+                origin or "",
+                host_n,
+                lead_limit,
+                own,
+            )
             return {
                 "ok": False,
                 "lead_id": None,
                 "message": (
-                    "Слишком много заявок с вашего IP. "
+                    "Слишком много заявок с вашего IP за час. "
                     "Напишите напрямую: https://t.me/DrSlon"
                 ),
                 "handoff": handoff_payload(),
             }
+
+        if day_cap > 0:
+            day_count = await self._store.count_leads_for_ip(client_ip, hours=24.0)
+            if day_count >= day_cap:
+                logger.warning(
+                    "Web rate/limit endpoint=lead reason=daily_ip_limit ip=%s origin=%s "
+                    "host=%s count=%s cap=%s",
+                    client_ip,
+                    origin or "",
+                    host_n,
+                    day_count,
+                    day_cap,
+                )
+                return {
+                    "ok": False,
+                    "lead_id": None,
+                    "message": (
+                        f"Достигнут дневной лимит заявок ({day_cap} с одного IP). "
+                        "Напишите напрямую: https://t.me/DrSlon "
+                        "или https://krivoshein.site/contacts/"
+                    ),
+                    "handoff": handoff_payload(),
+                }
 
         profile = profile_for_host(host_n)
         topic_final = (topic or "").strip() or str(profile.get("label") or "Веб-чат")
