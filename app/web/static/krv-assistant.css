@@ -40,8 +40,11 @@
   top: auto !important;
   left: auto !important;
   right: max(var(--krv-a-edge), env(safe-area-inset-right, 0px)) !important;
+  /* --krv-a-keyboard-inset: soft keyboard lift (JS / visualViewport) */
+  --krv-a-keyboard-inset: 0px;
   bottom: calc(
-    var(--krv-a-stack-bottom) + env(safe-area-inset-bottom, 0px)
+    var(--krv-a-stack-bottom) + env(safe-area-inset-bottom, 0px) +
+      var(--krv-a-keyboard-inset)
   ) !important;
   display: flex !important;
   flex-direction: column;
@@ -558,33 +561,41 @@
   display: flex;
 }
 
-/* —— Mobile lead form mode (class set by JS: .is-lead) ——
- * Form was max-height 55% → send button sat below fold; expand form,
- * shrink message list, sticky actions. */
+/* —— Mobile open panel + lead form (class .is-lead from JS) —— */
 @media (max-width: 767.98px) {
+  /* Panel height tracks visual viewport (keyboard-safe).
+   * Root bottom already includes stack + keyboard-inset, so free
+   * height for (panel + gap + bubble) is vv - stack - safe. */
   .krv-assistant.is-open .krv-a-panel {
-    /* Prefer visual viewport when keyboard is open (JS sets --krv-a-vv-h) */
     height: min(
-      var(--krv-a-h),
+      520px,
       calc(
         var(--krv-a-vv-h, 100dvh) - var(--krv-a-stack-bottom) -
           env(safe-area-inset-bottom, 0px) - var(--krv-a-bubble-size) -
-          var(--krv-a-gap) - 8px
+          var(--krv-a-gap) - 12px
       )
     );
     max-height: calc(
       var(--krv-a-vv-h, 100dvh) - var(--krv-a-stack-bottom) -
         env(safe-area-inset-bottom, 0px) - var(--krv-a-bubble-size) -
-        var(--krv-a-gap) - 8px
+        var(--krv-a-gap) - 12px
     );
+    min-height: 0;
   }
 
+  /* Chat mode: ensure msgs + composer + chips can scroll if needed */
+  .krv-assistant.is-open:not(.is-lead) .krv-a-panel {
+    overflow: hidden;
+  }
+
+  .krv-assistant.is-open:not(.is-lead) .krv-a-msgs {
+    flex: 1 1 auto;
+    min-height: 80px;
+  }
+
+  /* Lead mode: give the form almost the entire panel */
   .krv-assistant.is-lead .krv-a-msgs {
-    flex: 0 0 auto !important;
-    max-height: 64px;
-    min-height: 0;
-    padding-top: 8px;
-    padding-bottom: 6px;
+    display: none !important;
   }
 
   .krv-assistant.is-lead .krv-a-quick,
@@ -597,12 +608,21 @@
     min-height: 0;
     max-height: none;
     gap: 6px;
-    padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+    padding: 8px 10px 8px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
 
   .krv-assistant.is-lead .krv-a-form.is-on .krv-a-form-title {
     font-size: 12px;
     margin-bottom: 0;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--krv-a-bg);
+    padding-bottom: 4px;
   }
 
   .krv-assistant.is-lead .krv-a-form.is-on .krv-a-field > span {
@@ -614,12 +634,12 @@
   .krv-assistant.is-lead .krv-a-form.is-on select {
     min-height: 36px;
     padding: 7px 9px;
-    font-size: 16px; /* iOS: avoid auto-zoom on focus */
+    font-size: 16px; /* iOS: avoid focus zoom */
   }
 
   .krv-assistant.is-lead .krv-a-form.is-on textarea {
     min-height: 44px;
-    max-height: 64px;
+    max-height: 56px;
   }
 
   .krv-assistant.is-lead .krv-a-form.is-on .krv-a-field-row {
@@ -632,29 +652,38 @@
     bottom: 0;
     z-index: 3;
     flex-shrink: 0;
-    margin-top: 4px;
+    margin-top: 6px;
     padding-top: 8px;
-    padding-bottom: 2px;
-    background: linear-gradient(
-      to bottom,
-      rgba(255, 255, 255, 0) 0%,
-      var(--krv-a-bg) 28%
-    );
+    padding-bottom: max(4px, env(safe-area-inset-bottom, 0px));
+    background: var(--krv-a-bg);
+    box-shadow: 0 -6px 12px -8px rgba(15, 23, 42, 0.18);
     gap: 6px;
   }
 
   html[data-theme="dark"] .krv-assistant.is-lead .krv-a-form.is-on .krv-a-form-actions,
   .krv-assistant.krv-a-dark.is-lead .krv-a-form.is-on .krv-a-form-actions {
-    background: linear-gradient(
-      to bottom,
-      rgba(18, 26, 43, 0) 0%,
-      var(--krv-a-bg) 28%
-    );
+    background: var(--krv-a-bg);
+    box-shadow: 0 -6px 12px -8px rgba(0, 0, 0, 0.45);
   }
 
   .krv-assistant.is-lead .krv-a-form.is-on .krv-a-btn {
-    min-height: 42px;
+    min-height: 44px;
     padding: 10px 12px;
+  }
+
+  /* Very short viewports (keyboard open or SE): tighter lead chrome */
+  @media (max-height: 520px) {
+    .krv-assistant.is-lead .krv-a-head {
+      padding: 8px 10px 6px;
+    }
+    .krv-assistant.is-lead .krv-a-form.is-on {
+      gap: 4px;
+      padding: 6px 8px;
+    }
+    .krv-assistant.is-lead .krv-a-form.is-on textarea {
+      min-height: 40px;
+      max-height: 48px;
+    }
   }
 }
 
