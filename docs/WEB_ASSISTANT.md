@@ -104,3 +104,8 @@ After ~50s of idle (62s on viewports &lt; 480px) shows a soft tip next to the bu
 - Shown once per tab → `sessionStorage.krv_assistant_proactive_shown=1`
 - Does not open the full panel; click tip/bubble opens chat as usual
 - Suppressed while the panel is open
+
+## Theme & language (v=20260730f)
+
+- Theme follows `html[data-theme=light|dark]` (landings + hub). Fallback: `prefers-color-scheme` when site does not force light.
+- Language from `html[lang]`, `data-lang`, `localStorage.krv_lang`, or `?lang=en|ru`. Client-side RU/EN strings for chrome, form, tips, and greetings.

@@ -1,6 +1,6 @@
 /**
- * KRV AI Popup Assistant — vanilla embed (v=20260730e)
- * CSS is injected as <style> (no cross-origin stylesheet issues).
+ * KRV AI Popup Assistant — vanilla embed (v=20260730f)
+ * CSS injected as <style>. Theme: html[data-theme]. Lang: html[lang] / storage.
  */
 (function () {
   "use strict";
@@ -25,8 +25,165 @@
   var PROACTIVE_SHOWN_KEY = "krv_assistant_proactive_shown";
   var PROACTIVE_MS = 50000;
   var PROACTIVE_MS_MOBILE = 62000;
-  var SCROLL_IDLE_PX = 48;
-  var EMBEDDED_CSS = "/* KRV Web AI Assistant \u2014 clean technical UI (right-bottom)\n * Avoids landing mobile-cta-bar (~z-index 60, ~64px) via --krv-a-stack-bottom.\n */\n.krv-assistant {\n  --krv-a-bg: #ffffff;\n  --krv-a-bg-soft: #f8fafc;\n  --krv-a-bg-msg: #f1f5f9;\n  --krv-a-line: #e2e8f0;\n  --krv-a-ink: #0f172a;\n  --krv-a-mute: #64748b;\n  --krv-a-accent: #315fe8;\n  --krv-a-accent-h: #244ac2;\n  --krv-a-accent-soft: #eef4ff;\n  --krv-a-user: #315fe8;\n  --krv-a-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.06),\n    0 16px 40px -8px rgba(15, 23, 42, 0.18);\n  --krv-a-radius: 16px;\n  --krv-a-radius-sm: 10px;\n  /* Above page content & mobile CTA (60) / cookie (90); below rare system modals */\n  --krv-a-z: 120;\n  /* JS sets --krv-a-stack-bottom to clear fixed bottom bars; CSS fallback for mobile CTA */\n  --krv-a-stack-bottom: 16px;\n  --krv-a-edge: 16px;\n  --krv-a-gap: 10px;\n  --krv-a-bubble-size: 56px;\n  --krv-a-w: min(360px, calc(100vw - 24px));\n  --krv-a-h: min(\n    520px,\n    calc(\n      100dvh - var(--krv-a-stack-bottom) - env(safe-area-inset-bottom, 0px) -\n        var(--krv-a-bubble-size) - var(--krv-a-gap) - 16px\n    )\n  );\n\n  position: fixed;\n  z-index: var(--krv-a-z);\n  right: max(var(--krv-a-edge), env(safe-area-inset-right, 0px));\n  bottom: calc(\n    var(--krv-a-stack-bottom) + env(safe-area-inset-bottom, 0px)\n  );\n  left: auto;\n  display: flex;\n  flex-direction: column;\n  align-items: flex-end;\n  gap: var(--krv-a-gap);\n  color: var(--krv-a-ink);\n  line-height: 1.45;\n  font-size: 14px;\n  font-family: Inter, system-ui, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif;\n  -webkit-font-smoothing: antialiased;\n  /* Don't trap page scroll when closed */\n  pointer-events: none;\n  max-width: calc(100vw - 16px);\n}\n\n/* Only interactive pieces receive clicks */\n.krv-assistant .krv-a-bubble,\n.krv-assistant .krv-a-panel,\n.krv-assistant .krv-a-tip {\n  pointer-events: auto;\n}\n\n.krv-assistant[data-side=\"left\"] {\n  left: max(var(--krv-a-edge), env(safe-area-inset-left, 0px));\n  right: auto;\n  align-items: flex-start;\n}\n\n/* Mobile: clear fixed .mobile-cta-bar (~64\u201372px) even before JS measures */\n@media (max-width: 767.98px) {\n  .krv-assistant {\n    --krv-a-stack-bottom: 76px;\n    --krv-a-edge: 12px;\n    --krv-a-bubble-size: 52px;\n  }\n}\n\n/* Very small phones (SE / 375) */\n@media (max-width: 380px) {\n  .krv-assistant {\n    --krv-a-stack-bottom: 80px;\n    --krv-a-edge: 10px;\n    --krv-a-bubble-size: 48px;\n    --krv-a-gap: 8px;\n  }\n}\n\n/* Desktop / tablet: no mobile bar */\n@media (min-width: 768px) {\n  .krv-assistant {\n    --krv-a-stack-bottom: 16px;\n    --krv-a-edge: 20px;\n    --krv-a-bubble-size: 56px;\n  }\n}\n\n.krv-assistant *,\n.krv-assistant *::before,\n.krv-assistant *::after {\n  box-sizing: border-box;\n}\n\n/* \u2014\u2014 Bubble \u2014\u2014 */\n.krv-assistant .krv-a-bubble {\n  width: var(--krv-a-bubble-size);\n  height: var(--krv-a-bubble-size);\n  flex: 0 0 auto;\n  border: 0;\n  border-radius: 50%;\n  cursor: pointer;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  background: var(--krv-a-accent);\n  color: #fff;\n  box-shadow: 0 8px 24px rgba(49, 95, 232, 0.35);\n  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;\n  padding: 0;\n}\n\n.krv-assistant .krv-a-bubble:hover {\n  background: var(--krv-a-accent-h);\n  transform: translateY(-1px);\n  box-shadow: 0 10px 28px rgba(49, 95, 232, 0.42);\n}\n\n.krv-assistant .krv-a-bubble:active {\n  transform: translateY(0);\n}\n\n.krv-assistant .krv-a-bubble:focus-visible {\n  outline: 2px solid var(--krv-a-accent);\n  outline-offset: 3px;\n}\n\n.krv-assistant .krv-a-bubble svg {\n  width: 24px;\n  height: 24px;\n  display: block;\n  fill: none;\n  stroke: currentColor;\n  stroke-width: 2;\n  stroke-linecap: round;\n  stroke-linejoin: round;\n}\n\n.krv-assistant.is-open .krv-a-bubble {\n  background: #1e293b;\n  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.2);\n}\n\n/* Soft proactive nudge */\n.krv-assistant .krv-a-nudge-wrap {\n  display: flex;\n  flex-direction: row;\n  align-items: flex-end;\n  gap: 8px;\n  pointer-events: none;\n}\n\n.krv-assistant[data-side=\"left\"] .krv-a-nudge-wrap {\n  flex-direction: row-reverse;\n}\n\n.krv-assistant .krv-a-tip {\n  display: none;\n  max-width: min(220px, calc(100vw - 88px));\n  padding: 8px 10px 8px 12px;\n  border-radius: 12px;\n  border: 1px solid var(--krv-a-line);\n  background: var(--krv-a-bg);\n  color: var(--krv-a-ink);\n  box-shadow: var(--krv-a-shadow);\n  font-size: 12.5px;\n  line-height: 1.35;\n  position: relative;\n  cursor: pointer;\n  text-align: left;\n  gap: 6px;\n  align-items: flex-start;\n}\n\n.krv-assistant.is-nudge .krv-a-tip {\n  display: inline-flex;\n  animation: krv-a-tip-in 0.28s ease;\n}\n\n.krv-assistant .krv-a-tip-text {\n  flex: 1 1 auto;\n  min-width: 0;\n}\n\n.krv-assistant .krv-a-tip-x {\n  flex: 0 0 auto;\n  border: 0;\n  background: transparent;\n  color: var(--krv-a-mute);\n  cursor: pointer;\n  font-size: 16px;\n  line-height: 1;\n  padding: 0 0 0 4px;\n  margin: -2px 0 0;\n}\n\n.krv-assistant .krv-a-tip-x:hover {\n  color: var(--krv-a-ink);\n}\n\n/* subtle pulse on bubble when nudging */\n.krv-assistant.is-nudge .krv-a-bubble {\n  box-shadow:\n    0 0 0 0 rgba(49, 95, 232, 0.45),\n    0 8px 24px rgba(49, 95, 232, 0.35);\n  animation: krv-a-pulse 1.8s ease-out infinite;\n}\n\n.krv-assistant.is-open.is-nudge .krv-a-bubble {\n  animation: none;\n}\n\n@keyframes krv-a-pulse {\n  0% {\n    box-shadow:\n      0 0 0 0 rgba(49, 95, 232, 0.4),\n      0 8px 24px rgba(49, 95, 232, 0.35);\n  }\n  70% {\n    box-shadow:\n      0 0 0 12px rgba(49, 95, 232, 0),\n      0 8px 24px rgba(49, 95, 232, 0.28);\n  }\n  100% {\n    box-shadow:\n      0 0 0 0 rgba(49, 95, 232, 0),\n      0 8px 24px rgba(49, 95, 232, 0.35);\n  }\n}\n\n@keyframes krv-a-tip-in {\n  from {\n    opacity: 0;\n    transform: translateY(6px) scale(0.96);\n  }\n  to {\n    opacity: 1;\n    transform: translateY(0) scale(1);\n  }\n}\n\n@media (max-width: 480px) {\n  .krv-assistant .krv-a-tip {\n    max-width: min(168px, calc(100vw - 78px));\n    font-size: 12px;\n    padding: 7px 8px 7px 10px;\n  }\n}\n\n@media (prefers-reduced-motion: reduce) {\n  .krv-assistant.is-nudge .krv-a-bubble {\n    animation: none;\n  }\n  .krv-assistant.is-nudge .krv-a-tip {\n    animation: none;\n  }\n}\n\n/* \u2014\u2014 Panel \u2014\u2014 */\n.krv-assistant .krv-a-panel {\n  display: none;\n  width: var(--krv-a-w);\n  height: var(--krv-a-h);\n  max-height: var(--krv-a-h);\n  max-width: 100%;\n  flex-direction: column;\n  background: var(--krv-a-bg);\n  border: 1px solid var(--krv-a-line);\n  border-radius: var(--krv-a-radius);\n  box-shadow: var(--krv-a-shadow);\n  overflow: hidden;\n  /* Keep panel inside viewport horizontally */\n  margin-right: 0;\n  margin-left: 0;\n}\n\n.krv-assistant.is-open .krv-a-panel {\n  display: flex;\n}\n\n/* When open on mobile, lock body scroll slightly less invasive: overscroll contain */\n.krv-assistant.is-open .krv-a-panel,\n.krv-assistant.is-open .krv-a-msgs {\n  overscroll-behavior: contain;\n}\n\n/* Header */\n.krv-assistant .krv-a-head {\n  flex: 0 0 auto;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  padding: 14px 14px 12px;\n  background: var(--krv-a-bg);\n  border-bottom: 1px solid var(--krv-a-line);\n}\n\n.krv-assistant .krv-a-head-left {\n  display: flex;\n  align-items: center;\n  gap: 10px;\n  min-width: 0;\n}\n\n.krv-assistant .krv-a-avatar {\n  width: 36px;\n  height: 36px;\n  border-radius: 10px;\n  flex: 0 0 auto;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  background: var(--krv-a-accent-soft);\n  color: var(--krv-a-accent);\n  font-size: 13px;\n  font-weight: 700;\n  letter-spacing: -0.02em;\n}\n\n.krv-assistant .krv-a-titles {\n  min-width: 0;\n}\n\n.krv-assistant .krv-a-head h2 {\n  margin: 0;\n  font-size: 14px;\n  font-weight: 650;\n  letter-spacing: -0.01em;\n  color: var(--krv-a-ink);\n  line-height: 1.25;\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n}\n\n.krv-assistant .krv-a-head p {\n  margin: 2px 0 0;\n  font-size: 12px;\n  color: var(--krv-a-mute);\n  line-height: 1.3;\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n}\n\n.krv-assistant .krv-a-close {\n  flex: 0 0 auto;\n  width: 32px;\n  height: 32px;\n  border: 0;\n  border-radius: 8px;\n  background: transparent;\n  color: var(--krv-a-mute);\n  cursor: pointer;\n  font-size: 20px;\n  line-height: 1;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  padding: 0;\n}\n\n.krv-assistant .krv-a-close:hover {\n  background: var(--krv-a-bg-soft);\n  color: var(--krv-a-ink);\n}\n\n/* Messages */\n.krv-assistant .krv-a-msgs {\n  flex: 1 1 auto;\n  min-height: 0;\n  overflow-x: hidden;\n  overflow-y: auto;\n  padding: 12px 12px 8px;\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n  background: var(--krv-a-bg-soft);\n  -webkit-overflow-scrolling: touch;\n}\n\n.krv-assistant .krv-a-msg {\n  max-width: 88%;\n  padding: 9px 12px;\n  border-radius: 12px;\n  white-space: pre-wrap;\n  word-break: break-word;\n  font-size: 13px;\n  line-height: 1.45;\n}\n\n.krv-assistant .krv-a-msg.bot {\n  align-self: flex-start;\n  background: var(--krv-a-bg);\n  border: 1px solid var(--krv-a-line);\n  color: var(--krv-a-ink);\n  border-bottom-left-radius: 4px;\n}\n\n.krv-assistant .krv-a-msg.user {\n  align-self: flex-end;\n  background: var(--krv-a-user);\n  color: #fff;\n  border-bottom-right-radius: 4px;\n}\n\n.krv-assistant .krv-a-msg.sys {\n  align-self: center;\n  max-width: 100%;\n  background: transparent;\n  color: var(--krv-a-mute);\n  font-size: 11.5px;\n  padding: 2px 6px;\n  text-align: center;\n}\n\n.krv-assistant .krv-a-typing {\n  align-self: flex-start;\n  color: var(--krv-a-mute);\n  font-size: 12px;\n  padding: 2px 4px;\n}\n\n/* Quick replies */\n.krv-assistant .krv-a-quick {\n  flex: 0 0 auto;\n  display: flex;\n  flex-wrap: wrap;\n  gap: 6px;\n  padding: 8px 12px 0;\n  background: var(--krv-a-bg);\n}\n\n.krv-assistant .krv-a-quick:empty {\n  display: none;\n}\n\n.krv-assistant .krv-a-chip {\n  border: 1px solid var(--krv-a-line);\n  background: var(--krv-a-bg);\n  color: var(--krv-a-ink);\n  border-radius: 999px;\n  padding: 6px 11px;\n  font-size: 12px;\n  line-height: 1.2;\n  cursor: pointer;\n  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;\n}\n\n.krv-assistant .krv-a-chip:hover {\n  border-color: #93b0f5;\n  background: var(--krv-a-accent-soft);\n  color: var(--krv-a-accent);\n}\n\n/* Handoff links */\n.krv-assistant .krv-a-handoff {\n  flex: 0 0 auto;\n  display: flex;\n  flex-wrap: wrap;\n  gap: 6px;\n  padding: 8px 12px;\n  background: var(--krv-a-bg);\n  border-bottom: 1px solid var(--krv-a-line);\n}\n\n.krv-assistant .krv-a-handoff:empty {\n  display: none;\n  border-bottom: 0;\n  padding: 0;\n}\n\n.krv-assistant .krv-a-handoff a,\n.krv-assistant .krv-a-handoff button.krv-a-chip {\n  font-size: 11.5px;\n  color: var(--krv-a-accent);\n  text-decoration: none;\n  border: 1px solid var(--krv-a-line);\n  border-radius: 999px;\n  padding: 5px 10px;\n  background: var(--krv-a-bg-soft);\n  cursor: pointer;\n  font-family: inherit;\n  line-height: 1.2;\n}\n\n.krv-assistant .krv-a-handoff a:hover,\n.krv-assistant .krv-a-handoff button.krv-a-chip:hover {\n  border-color: #93b0f5;\n  background: var(--krv-a-accent-soft);\n}\n\n/* Lead form */\n.krv-assistant .krv-a-form {\n  display: none;\n  flex: 0 0 auto;\n  flex-direction: column;\n  gap: 8px;\n  padding: 10px 12px 12px;\n  border-top: 1px solid var(--krv-a-line);\n  background: var(--krv-a-bg);\n  max-height: 55%;\n  overflow-y: auto;\n}\n\n.krv-assistant .krv-a-form.is-on {\n  display: flex;\n}\n\n.krv-assistant .krv-a-form-title {\n  margin: 0 0 2px;\n  font-size: 12.5px;\n  font-weight: 650;\n  color: var(--krv-a-ink);\n}\n\n.krv-assistant .krv-a-field {\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n  margin: 0;\n}\n\n.krv-assistant .krv-a-field > span {\n  font-size: 11px;\n  font-weight: 500;\n  color: var(--krv-a-mute);\n}\n\n.krv-assistant .krv-a-field-row {\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 8px;\n}\n\n.krv-assistant .krv-a-form input,\n.krv-assistant .krv-a-form textarea,\n.krv-assistant .krv-a-form select {\n  width: 100%;\n  margin: 0;\n  border: 1px solid var(--krv-a-line);\n  background: var(--krv-a-bg);\n  color: var(--krv-a-ink);\n  border-radius: var(--krv-a-radius-sm);\n  padding: 8px 10px;\n  font-size: 13px;\n  font-family: inherit;\n  line-height: 1.35;\n  min-height: 38px;\n  appearance: none;\n  -webkit-appearance: none;\n}\n\n.krv-assistant .krv-a-form textarea {\n  min-height: 64px;\n  max-height: 100px;\n  resize: vertical;\n}\n\n.krv-assistant .krv-a-form select {\n  background-image: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");\n  background-repeat: no-repeat;\n  background-position: right 10px center;\n  padding-right: 28px;\n}\n\n.krv-assistant .krv-a-form input:focus,\n.krv-assistant .krv-a-form textarea:focus,\n.krv-assistant .krv-a-form select:focus {\n  outline: none;\n  border-color: var(--krv-a-accent);\n  box-shadow: 0 0 0 3px rgba(49, 95, 232, 0.15);\n}\n\n.krv-assistant .krv-a-form input::placeholder,\n.krv-assistant .krv-a-form textarea::placeholder {\n  color: #94a3b8;\n}\n\n.krv-assistant .krv-a-hp {\n  position: absolute !important;\n  left: -10000px !important;\n  width: 1px !important;\n  height: 1px !important;\n  overflow: hidden !important;\n  opacity: 0 !important;\n  pointer-events: none !important;\n}\n\n.krv-assistant .krv-a-form-actions {\n  display: flex;\n  gap: 8px;\n  margin-top: 2px;\n}\n\n.krv-assistant .krv-a-btn {\n  border: 0;\n  border-radius: var(--krv-a-radius-sm);\n  padding: 9px 12px;\n  font-size: 13px;\n  font-weight: 600;\n  font-family: inherit;\n  cursor: pointer;\n  line-height: 1.2;\n  min-height: 38px;\n}\n\n.krv-assistant .krv-a-btn.primary {\n  background: var(--krv-a-accent);\n  color: #fff;\n  flex: 1;\n}\n\n.krv-assistant .krv-a-btn.primary:hover {\n  background: var(--krv-a-accent-h);\n}\n\n.krv-assistant .krv-a-btn.ghost {\n  background: var(--krv-a-bg);\n  color: var(--krv-a-mute);\n  border: 1px solid var(--krv-a-line);\n  flex: 0 0 auto;\n  min-width: 88px;\n}\n\n.krv-assistant .krv-a-btn.ghost:hover {\n  color: var(--krv-a-ink);\n  background: var(--krv-a-bg-soft);\n}\n\n/* Composer */\n.krv-assistant .krv-a-composer {\n  flex: 0 0 auto;\n  display: flex;\n  align-items: flex-end;\n  gap: 8px;\n  padding: 10px 12px 12px;\n  border-top: 1px solid var(--krv-a-line);\n  background: var(--krv-a-bg);\n}\n\n.krv-assistant .krv-a-composer.is-hidden {\n  display: none;\n}\n\n.krv-assistant .krv-a-composer textarea {\n  flex: 1 1 auto;\n  width: 100%;\n  min-height: 40px;\n  max-height: 96px;\n  margin: 0;\n  border: 1px solid var(--krv-a-line);\n  background: var(--krv-a-bg-soft);\n  color: var(--krv-a-ink);\n  border-radius: 12px;\n  padding: 10px 12px;\n  font-size: 13px;\n  font-family: inherit;\n  line-height: 1.4;\n  resize: none;\n}\n\n.krv-assistant .krv-a-composer textarea:focus {\n  outline: none;\n  border-color: var(--krv-a-accent);\n  background: var(--krv-a-bg);\n  box-shadow: 0 0 0 3px rgba(49, 95, 232, 0.12);\n}\n\n.krv-assistant .krv-a-send {\n  flex: 0 0 auto;\n  width: 40px;\n  height: 40px;\n  border: 0;\n  border-radius: 12px;\n  background: var(--krv-a-accent);\n  color: #fff;\n  cursor: pointer;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  padding: 0;\n  font-size: 16px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.krv-assistant .krv-a-send:hover {\n  background: var(--krv-a-accent-h);\n}\n\n.krv-assistant .krv-a-send:disabled {\n  opacity: 0.5;\n  cursor: not-allowed;\n}\n\n/* Mobile width/form */\n@media (max-width: 480px) {\n  .krv-assistant {\n    --krv-a-w: min(calc(100vw - 20px), 400px);\n    width: auto;\n    max-width: calc(100vw - 16px);\n  }\n\n  .krv-assistant .krv-a-field-row {\n    grid-template-columns: 1fr;\n  }\n\n  .krv-assistant .krv-a-bubble svg {\n    width: 22px;\n    height: 22px;\n  }\n}\n\n/* Prefer reduced motion */\n@media (prefers-reduced-motion: reduce) {\n  .krv-assistant .krv-a-bubble {\n    transition: none;\n  }\n}\n";
+  var EMBEDDED_CSS = "/* KRV Web AI Assistant \u2014 clean technical UI (right-bottom)\n * Avoids landing mobile-cta-bar (~z-index 60, ~64px) via --krv-a-stack-bottom.\n */\n.krv-assistant {\n  --krv-a-bg: #ffffff;\n  --krv-a-bg-soft: #f8fafc;\n  --krv-a-bg-msg: #f1f5f9;\n  --krv-a-line: #e2e8f0;\n  --krv-a-ink: #0f172a;\n  --krv-a-mute: #64748b;\n  --krv-a-accent: #315fe8;\n  --krv-a-accent-h: #244ac2;\n  --krv-a-accent-soft: #eef4ff;\n  --krv-a-user: #315fe8;\n  --krv-a-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.06),\n    0 16px 40px -8px rgba(15, 23, 42, 0.18);\n  --krv-a-radius: 16px;\n  --krv-a-radius-sm: 10px;\n  /* Above page content & mobile CTA (60) / cookie (90); below rare system modals */\n  --krv-a-z: 120;\n  /* JS sets --krv-a-stack-bottom to clear fixed bottom bars; CSS fallback for mobile CTA */\n  --krv-a-stack-bottom: 16px;\n  --krv-a-edge: 16px;\n  --krv-a-gap: 10px;\n  --krv-a-bubble-size: 56px;\n  --krv-a-w: min(360px, calc(100vw - 24px));\n  --krv-a-h: min(\n    520px,\n    calc(\n      100dvh - var(--krv-a-stack-bottom) - env(safe-area-inset-bottom, 0px) -\n        var(--krv-a-bubble-size) - var(--krv-a-gap) - 16px\n    )\n  );\n\n  position: fixed;\n  z-index: var(--krv-a-z);\n  right: max(var(--krv-a-edge), env(safe-area-inset-right, 0px));\n  bottom: calc(\n    var(--krv-a-stack-bottom) + env(safe-area-inset-bottom, 0px)\n  );\n  left: auto;\n  display: flex;\n  flex-direction: column;\n  align-items: flex-end;\n  gap: var(--krv-a-gap);\n  color: var(--krv-a-ink);\n  line-height: 1.45;\n  font-size: 14px;\n  font-family: Inter, system-ui, -apple-system, \"Segoe UI\", Roboto, Arial, sans-serif;\n  -webkit-font-smoothing: antialiased;\n  /* Don't trap page scroll when closed */\n  pointer-events: none;\n  max-width: calc(100vw - 16px);\n}\n\n/* Only interactive pieces receive clicks */\n.krv-assistant .krv-a-bubble,\n.krv-assistant .krv-a-panel,\n.krv-assistant .krv-a-tip {\n  pointer-events: auto;\n}\n\n.krv-assistant[data-side=\"left\"] {\n  left: max(var(--krv-a-edge), env(safe-area-inset-left, 0px));\n  right: auto;\n  align-items: flex-start;\n}\n\n/* Mobile: clear fixed .mobile-cta-bar (~64\u201372px) even before JS measures */\n@media (max-width: 767.98px) {\n  .krv-assistant {\n    --krv-a-stack-bottom: 76px;\n    --krv-a-edge: 12px;\n    --krv-a-bubble-size: 52px;\n  }\n}\n\n/* Very small phones (SE / 375) */\n@media (max-width: 380px) {\n  .krv-assistant {\n    --krv-a-stack-bottom: 80px;\n    --krv-a-edge: 10px;\n    --krv-a-bubble-size: 48px;\n    --krv-a-gap: 8px;\n  }\n}\n\n/* Desktop / tablet: no mobile bar */\n@media (min-width: 768px) {\n  .krv-assistant {\n    --krv-a-stack-bottom: 16px;\n    --krv-a-edge: 20px;\n    --krv-a-bubble-size: 56px;\n  }\n}\n\n.krv-assistant *,\n.krv-assistant *::before,\n.krv-assistant *::after {\n  box-sizing: border-box;\n}\n\n/* \u2014\u2014 Bubble \u2014\u2014 */\n.krv-assistant .krv-a-bubble {\n  width: var(--krv-a-bubble-size);\n  height: var(--krv-a-bubble-size);\n  flex: 0 0 auto;\n  border: 0;\n  border-radius: 50%;\n  cursor: pointer;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  background: var(--krv-a-accent);\n  color: #fff;\n  box-shadow: 0 8px 24px rgba(49, 95, 232, 0.35);\n  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;\n  padding: 0;\n}\n\n.krv-assistant .krv-a-bubble:hover {\n  background: var(--krv-a-accent-h);\n  transform: translateY(-1px);\n  box-shadow: 0 10px 28px rgba(49, 95, 232, 0.42);\n}\n\n.krv-assistant .krv-a-bubble:active {\n  transform: translateY(0);\n}\n\n.krv-assistant .krv-a-bubble:focus-visible {\n  outline: 2px solid var(--krv-a-accent);\n  outline-offset: 3px;\n}\n\n.krv-assistant .krv-a-bubble svg {\n  width: 24px;\n  height: 24px;\n  display: block;\n  fill: none;\n  stroke: currentColor;\n  stroke-width: 2;\n  stroke-linecap: round;\n  stroke-linejoin: round;\n}\n\n.krv-assistant.is-open .krv-a-bubble {\n  background: #1e293b;\n  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.2);\n}\n\n/* Soft proactive nudge */\n.krv-assistant .krv-a-nudge-wrap {\n  display: flex;\n  flex-direction: row;\n  align-items: flex-end;\n  gap: 8px;\n  pointer-events: none;\n}\n\n.krv-assistant[data-side=\"left\"] .krv-a-nudge-wrap {\n  flex-direction: row-reverse;\n}\n\n.krv-assistant .krv-a-tip {\n  display: none;\n  max-width: min(220px, calc(100vw - 88px));\n  padding: 8px 10px 8px 12px;\n  border-radius: 12px;\n  border: 1px solid var(--krv-a-line);\n  background: var(--krv-a-bg);\n  color: var(--krv-a-ink);\n  box-shadow: var(--krv-a-shadow);\n  font-size: 12.5px;\n  line-height: 1.35;\n  position: relative;\n  cursor: pointer;\n  text-align: left;\n  gap: 6px;\n  align-items: flex-start;\n}\n\n.krv-assistant.is-nudge .krv-a-tip {\n  display: inline-flex;\n  animation: krv-a-tip-in 0.28s ease;\n}\n\n.krv-assistant .krv-a-tip-text {\n  flex: 1 1 auto;\n  min-width: 0;\n}\n\n.krv-assistant .krv-a-tip-x {\n  flex: 0 0 auto;\n  border: 0;\n  background: transparent;\n  color: var(--krv-a-mute);\n  cursor: pointer;\n  font-size: 16px;\n  line-height: 1;\n  padding: 0 0 0 4px;\n  margin: -2px 0 0;\n}\n\n.krv-assistant .krv-a-tip-x:hover {\n  color: var(--krv-a-ink);\n}\n\n/* subtle pulse on bubble when nudging */\n.krv-assistant.is-nudge .krv-a-bubble {\n  box-shadow:\n    0 0 0 0 rgba(49, 95, 232, 0.45),\n    0 8px 24px rgba(49, 95, 232, 0.35);\n  animation: krv-a-pulse 1.8s ease-out infinite;\n}\n\n.krv-assistant.is-open.is-nudge .krv-a-bubble {\n  animation: none;\n}\n\n@keyframes krv-a-pulse {\n  0% {\n    box-shadow:\n      0 0 0 0 rgba(49, 95, 232, 0.4),\n      0 8px 24px rgba(49, 95, 232, 0.35);\n  }\n  70% {\n    box-shadow:\n      0 0 0 12px rgba(49, 95, 232, 0),\n      0 8px 24px rgba(49, 95, 232, 0.28);\n  }\n  100% {\n    box-shadow:\n      0 0 0 0 rgba(49, 95, 232, 0),\n      0 8px 24px rgba(49, 95, 232, 0.35);\n  }\n}\n\n@keyframes krv-a-tip-in {\n  from {\n    opacity: 0;\n    transform: translateY(6px) scale(0.96);\n  }\n  to {\n    opacity: 1;\n    transform: translateY(0) scale(1);\n  }\n}\n\n@media (max-width: 480px) {\n  .krv-assistant .krv-a-tip {\n    max-width: min(168px, calc(100vw - 78px));\n    font-size: 12px;\n    padding: 7px 8px 7px 10px;\n  }\n}\n\n@media (prefers-reduced-motion: reduce) {\n  .krv-assistant.is-nudge .krv-a-bubble {\n    animation: none;\n  }\n  .krv-assistant.is-nudge .krv-a-tip {\n    animation: none;\n  }\n}\n\n/* \u2014\u2014 Panel \u2014\u2014 */\n.krv-assistant .krv-a-panel {\n  display: none;\n  width: var(--krv-a-w);\n  height: var(--krv-a-h);\n  max-height: var(--krv-a-h);\n  max-width: 100%;\n  flex-direction: column;\n  background: var(--krv-a-bg);\n  border: 1px solid var(--krv-a-line);\n  border-radius: var(--krv-a-radius);\n  box-shadow: var(--krv-a-shadow);\n  overflow: hidden;\n  /* Keep panel inside viewport horizontally */\n  margin-right: 0;\n  margin-left: 0;\n}\n\n.krv-assistant.is-open .krv-a-panel {\n  display: flex;\n}\n\n/* When open on mobile, lock body scroll slightly less invasive: overscroll contain */\n.krv-assistant.is-open .krv-a-panel,\n.krv-assistant.is-open .krv-a-msgs {\n  overscroll-behavior: contain;\n}\n\n/* Header */\n.krv-assistant .krv-a-head {\n  flex: 0 0 auto;\n  display: flex;\n  align-items: flex-start;\n  justify-content: space-between;\n  gap: 10px;\n  padding: 12px 12px 10px;\n  background: var(--krv-a-bg);\n  border-bottom: 1px solid var(--krv-a-line);\n}\n\n.krv-assistant .krv-a-head-left {\n  display: flex;\n  align-items: center;\n  gap: 10px;\n  min-width: 0;\n}\n\n.krv-assistant .krv-a-avatar {\n  width: 32px;\n  height: 32px;\n  border-radius: 10px;\n  flex: 0 0 auto;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  background: var(--krv-a-accent-soft);\n  color: var(--krv-a-accent);\n  font-size: 13px;\n  font-weight: 700;\n  letter-spacing: -0.02em;\n}\n\n.krv-assistant .krv-a-titles {\n  min-width: 0;\n  flex: 1 1 auto;\n  padding-right: 4px;\n}\n\n.krv-assistant .krv-a-head h2,\n.krv-assistant .krv-a-head .krv-a-title {\n  margin: 0 !important;\n  padding: 0 !important;\n  font-size: 13px !important;\n  font-weight: 650 !important;\n  letter-spacing: -0.015em !important;\n  color: var(--krv-a-ink) !important;\n  line-height: 1.3 !important;\n  white-space: normal !important;\n  overflow: visible !important;\n  text-overflow: unset !important;\n  word-break: break-word !important;\n  max-width: 100% !important;\n  text-transform: none !important;\n}\n\n.krv-assistant .krv-a-head p,\n.krv-assistant .krv-a-head .krv-a-sub {\n  margin: 2px 0 0 !important;\n  padding: 0 !important;\n  font-size: 11.5px !important;\n  font-weight: 400 !important;\n  color: var(--krv-a-mute) !important;\n  line-height: 1.3 !important;\n  white-space: normal !important;\n  overflow: hidden !important;\n  display: -webkit-box !important;\n  -webkit-line-clamp: 2;\n  -webkit-box-orient: vertical;\n  text-transform: none !important;\n}\n\n.krv-assistant .krv-a-close {\n  flex: 0 0 auto;\n  width: 32px;\n  height: 32px;\n  border: 0;\n  border-radius: 8px;\n  background: transparent;\n  color: var(--krv-a-mute);\n  cursor: pointer;\n  font-size: 20px;\n  line-height: 1;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  padding: 0;\n}\n\n.krv-assistant .krv-a-close:hover {\n  background: var(--krv-a-bg-soft);\n  color: var(--krv-a-ink);\n}\n\n/* Messages */\n.krv-assistant .krv-a-msgs {\n  flex: 1 1 auto;\n  min-height: 0;\n  overflow-x: hidden;\n  overflow-y: auto;\n  padding: 12px 12px 8px;\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n  background: var(--krv-a-bg-soft);\n  -webkit-overflow-scrolling: touch;\n}\n\n.krv-assistant .krv-a-msg {\n  max-width: 88%;\n  padding: 9px 12px;\n  border-radius: 12px;\n  white-space: pre-wrap;\n  word-break: break-word;\n  font-size: 13px;\n  line-height: 1.45;\n}\n\n.krv-assistant .krv-a-msg.bot {\n  align-self: flex-start;\n  background: var(--krv-a-bg);\n  border: 1px solid var(--krv-a-line);\n  color: var(--krv-a-ink);\n  border-bottom-left-radius: 4px;\n}\n\n.krv-assistant .krv-a-msg.user {\n  align-self: flex-end;\n  background: var(--krv-a-user);\n  color: #fff;\n  border-bottom-right-radius: 4px;\n}\n\n.krv-assistant .krv-a-msg.sys {\n  align-self: center;\n  max-width: 100%;\n  background: transparent;\n  color: var(--krv-a-mute);\n  font-size: 11.5px;\n  padding: 2px 6px;\n  text-align: center;\n}\n\n.krv-assistant .krv-a-typing {\n  align-self: flex-start;\n  color: var(--krv-a-mute);\n  font-size: 12px;\n  padding: 2px 4px;\n}\n\n/* Quick replies */\n.krv-assistant .krv-a-quick {\n  flex: 0 0 auto;\n  display: flex;\n  flex-wrap: wrap;\n  gap: 6px;\n  padding: 8px 12px 0;\n  background: var(--krv-a-bg);\n}\n\n.krv-assistant .krv-a-quick:empty {\n  display: none;\n}\n\n.krv-assistant .krv-a-chip {\n  border: 1px solid var(--krv-a-line);\n  background: var(--krv-a-bg);\n  color: var(--krv-a-ink);\n  border-radius: 999px;\n  padding: 6px 11px;\n  font-size: 12px;\n  line-height: 1.2;\n  cursor: pointer;\n  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;\n}\n\n.krv-assistant .krv-a-chip:hover {\n  border-color: #93b0f5;\n  background: var(--krv-a-accent-soft);\n  color: var(--krv-a-accent);\n}\n\n/* Handoff links */\n.krv-assistant .krv-a-handoff {\n  flex: 0 0 auto;\n  display: flex;\n  flex-wrap: wrap;\n  gap: 6px;\n  padding: 8px 12px;\n  background: var(--krv-a-bg);\n  border-bottom: 1px solid var(--krv-a-line);\n}\n\n.krv-assistant .krv-a-handoff:empty {\n  display: none;\n  border-bottom: 0;\n  padding: 0;\n}\n\n.krv-assistant .krv-a-handoff a,\n.krv-assistant .krv-a-handoff button.krv-a-chip {\n  font-size: 11.5px;\n  color: var(--krv-a-accent);\n  text-decoration: none;\n  border: 1px solid var(--krv-a-line);\n  border-radius: 999px;\n  padding: 5px 10px;\n  background: var(--krv-a-bg-soft);\n  cursor: pointer;\n  font-family: inherit;\n  line-height: 1.2;\n}\n\n.krv-assistant .krv-a-handoff a:hover,\n.krv-assistant .krv-a-handoff button.krv-a-chip:hover {\n  border-color: #93b0f5;\n  background: var(--krv-a-accent-soft);\n}\n\n/* Lead form */\n.krv-assistant .krv-a-form {\n  display: none;\n  flex: 0 0 auto;\n  flex-direction: column;\n  gap: 8px;\n  padding: 10px 12px 12px;\n  border-top: 1px solid var(--krv-a-line);\n  background: var(--krv-a-bg);\n  max-height: 55%;\n  overflow-y: auto;\n}\n\n.krv-assistant .krv-a-form.is-on {\n  display: flex;\n}\n\n.krv-assistant .krv-a-form-title {\n  margin: 0 0 2px;\n  font-size: 12.5px;\n  font-weight: 650;\n  color: var(--krv-a-ink);\n}\n\n.krv-assistant .krv-a-field {\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n  margin: 0;\n}\n\n.krv-assistant .krv-a-field > span {\n  font-size: 11px;\n  font-weight: 500;\n  color: var(--krv-a-mute);\n}\n\n.krv-assistant .krv-a-field-row {\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 8px;\n}\n\n.krv-assistant .krv-a-form input,\n.krv-assistant .krv-a-form textarea,\n.krv-assistant .krv-a-form select {\n  width: 100%;\n  margin: 0;\n  border: 1px solid var(--krv-a-line);\n  background: var(--krv-a-bg);\n  color: var(--krv-a-ink);\n  border-radius: var(--krv-a-radius-sm);\n  padding: 8px 10px;\n  font-size: 13px;\n  font-family: inherit;\n  line-height: 1.35;\n  min-height: 38px;\n  appearance: none;\n  -webkit-appearance: none;\n}\n\n.krv-assistant .krv-a-form textarea {\n  min-height: 64px;\n  max-height: 100px;\n  resize: vertical;\n}\n\n.krv-assistant .krv-a-form select {\n  background-image: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");\n  background-repeat: no-repeat;\n  background-position: right 10px center;\n  padding-right: 28px;\n}\n\n.krv-assistant .krv-a-form input:focus,\n.krv-assistant .krv-a-form textarea:focus,\n.krv-assistant .krv-a-form select:focus {\n  outline: none;\n  border-color: var(--krv-a-accent);\n  box-shadow: 0 0 0 3px rgba(49, 95, 232, 0.15);\n}\n\n.krv-assistant .krv-a-form input::placeholder,\n.krv-assistant .krv-a-form textarea::placeholder {\n  color: #94a3b8;\n}\n\n.krv-assistant .krv-a-hp {\n  position: absolute !important;\n  left: -10000px !important;\n  width: 1px !important;\n  height: 1px !important;\n  overflow: hidden !important;\n  opacity: 0 !important;\n  pointer-events: none !important;\n}\n\n.krv-assistant .krv-a-form-actions {\n  display: flex;\n  gap: 8px;\n  margin-top: 2px;\n}\n\n.krv-assistant .krv-a-btn {\n  border: 0;\n  border-radius: var(--krv-a-radius-sm);\n  padding: 9px 12px;\n  font-size: 13px;\n  font-weight: 600;\n  font-family: inherit;\n  cursor: pointer;\n  line-height: 1.2;\n  min-height: 38px;\n}\n\n.krv-assistant .krv-a-btn.primary {\n  background: var(--krv-a-accent);\n  color: #fff;\n  flex: 1;\n}\n\n.krv-assistant .krv-a-btn.primary:hover {\n  background: var(--krv-a-accent-h);\n}\n\n.krv-assistant .krv-a-btn.ghost {\n  background: var(--krv-a-bg);\n  color: var(--krv-a-mute);\n  border: 1px solid var(--krv-a-line);\n  flex: 0 0 auto;\n  min-width: 88px;\n}\n\n.krv-assistant .krv-a-btn.ghost:hover {\n  color: var(--krv-a-ink);\n  background: var(--krv-a-bg-soft);\n}\n\n/* Composer */\n.krv-assistant .krv-a-composer {\n  flex: 0 0 auto;\n  display: flex;\n  align-items: flex-end;\n  gap: 8px;\n  padding: 10px 12px 12px;\n  border-top: 1px solid var(--krv-a-line);\n  background: var(--krv-a-bg);\n}\n\n.krv-assistant .krv-a-composer.is-hidden {\n  display: none;\n}\n\n.krv-assistant .krv-a-composer textarea {\n  flex: 1 1 auto;\n  width: 100%;\n  min-height: 40px;\n  max-height: 96px;\n  margin: 0;\n  border: 1px solid var(--krv-a-line);\n  background: var(--krv-a-bg-soft);\n  color: var(--krv-a-ink);\n  border-radius: 12px;\n  padding: 10px 12px;\n  font-size: 13px;\n  font-family: inherit;\n  line-height: 1.4;\n  resize: none;\n}\n\n.krv-assistant .krv-a-composer textarea:focus {\n  outline: none;\n  border-color: var(--krv-a-accent);\n  background: var(--krv-a-bg);\n  box-shadow: 0 0 0 3px rgba(49, 95, 232, 0.12);\n}\n\n.krv-assistant .krv-a-send {\n  flex: 0 0 auto;\n  width: 40px;\n  height: 40px;\n  border: 0;\n  border-radius: 12px;\n  background: var(--krv-a-accent);\n  color: #fff;\n  cursor: pointer;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  padding: 0;\n  font-size: 16px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.krv-assistant .krv-a-send:hover {\n  background: var(--krv-a-accent-h);\n}\n\n.krv-assistant .krv-a-send:disabled {\n  opacity: 0.5;\n  cursor: not-allowed;\n}\n\n/* Mobile width/form */\n@media (max-width: 480px) {\n  .krv-assistant {\n    --krv-a-w: min(calc(100vw - 20px), 400px);\n    width: auto;\n    max-width: calc(100vw - 16px);\n  }\n\n  .krv-assistant .krv-a-field-row {\n    grid-template-columns: 1fr;\n  }\n\n  .krv-assistant .krv-a-bubble svg {\n    width: 22px;\n    height: 22px;\n  }\n}\n\n\n/* ========== Theme: dark (site data-theme or system preference) ========== */\nhtml[data-theme=\"dark\"] .krv-assistant {\n  --krv-a-bg: #121a2b;\n  --krv-a-bg-soft: #0c1320;\n  --krv-a-bg-msg: #152238;\n  --krv-a-line: #2e3c58;\n  --krv-a-ink: #e8eefc;\n  --krv-a-mute: #a8b6d4;\n  --krv-a-accent: #5b8cff;\n  --krv-a-accent-h: #7aa3ff;\n  --krv-a-accent-soft: #1a2744;\n  --krv-a-user: #315fe8;\n  --krv-a-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);\n}\n\nhtml[data-theme=\"dark\"] .krv-assistant .krv-a-bubble {\n  box-shadow: 0 8px 24px rgba(49, 95, 232, 0.45);\n}\n\nhtml[data-theme=\"dark\"] .krv-assistant.is-open .krv-a-bubble {\n  background: #243044;\n  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);\n}\n\nhtml[data-theme=\"dark\"] .krv-assistant .krv-a-msg.bot {\n  background: #152238;\n  border-color: #2e3c58;\n}\n\nhtml[data-theme=\"dark\"] .krv-assistant .krv-a-chip:hover,\nhtml[data-theme=\"dark\"] .krv-assistant .krv-a-handoff a:hover {\n  border-color: #5b8cff;\n  background: #1a2744;\n  color: #c7d7ff;\n}\n\nhtml[data-theme=\"dark\"] .krv-assistant .krv-a-form input,\nhtml[data-theme=\"dark\"] .krv-assistant .krv-a-form textarea,\nhtml[data-theme=\"dark\"] .krv-assistant .krv-a-form select,\nhtml[data-theme=\"dark\"] .krv-assistant .krv-a-composer textarea {\n  background: #0c1320;\n  border-color: #2e3c58;\n  color: #e8eefc;\n}\n\nhtml[data-theme=\"dark\"] .krv-assistant .krv-a-tip {\n  background: #152238;\n  border-color: #2e3c58;\n  color: #e8eefc;\n}\n\n/* System dark only when site does not force light */\n@media (prefers-color-scheme: dark) {\n  html:not([data-theme=\"light\"]) .krv-assistant {\n    --krv-a-bg: #121a2b;\n    --krv-a-bg-soft: #0c1320;\n    --krv-a-bg-msg: #152238;\n    --krv-a-line: #2e3c58;\n    --krv-a-ink: #e8eefc;\n    --krv-a-mute: #a8b6d4;\n    --krv-a-accent: #5b8cff;\n    --krv-a-accent-h: #7aa3ff;\n    --krv-a-accent-soft: #1a2744;\n    --krv-a-user: #315fe8;\n    --krv-a-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);\n  }\n}\n\n/* Smooth token switches when site toggles data-theme */\n.krv-assistant,\n.krv-assistant .krv-a-panel,\n.krv-assistant .krv-a-bubble,\n.krv-assistant .krv-a-tip,\n.krv-assistant .krv-a-msg,\n.krv-assistant .krv-a-chip,\n.krv-assistant .krv-a-form input,\n.krv-assistant .krv-a-form textarea,\n.krv-assistant .krv-a-form select,\n.krv-assistant .krv-a-composer textarea {\n  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease,\n    box-shadow 0.2s ease;\n}\n\n/* Prefer reduced motion */\n@media (prefers-reduced-motion: reduce) {\n  .krv-assistant .krv-a-bubble {\n    transition: none;\n  }\n}\n";
+
+  var I18N = {
+    ru: {
+      title: "Помощник Dr.Slon",
+      subtitleDefault: "Услуги и заявки",
+      openChat: "Открыть чат",
+      close: "Закрыть",
+      tipAria: "Нужна помощь?",
+      tipClose: "Закрыть подсказку",
+      tipDefault: "Нужна помощь?",
+      placeholder: "Напишите вопрос…",
+      send: "Отправить",
+      formTitle: "Заявка",
+      need: "Что нужно *",
+      needPh: "Кратко опишите задачу",
+      contact: "Контакт *",
+      contactPh: "Telegram / телефон / email",
+      budget: "Бюджет",
+      budgetPh: "от 40 000 ₽",
+      urgency: "Срочность",
+      urgencyNormal: "Обычная",
+      urgencySoon: "Срочно",
+      urgencyUrgent: "Очень срочно",
+      topic: "Тема",
+      topicPh: "Боты / WordPress / …",
+      submit: "Отправить",
+      cancel: "Отмена",
+      leadBtn: "Заявка",
+      price: "Прайс",
+      typing: "Печатает…",
+      suggestLead: "Можно оставить заявку кнопкой ниже",
+      offline:
+        "Чат временно недоступен. Telegram: https://t.me/DrSlon",
+      chatFail:
+        "Не удалось ответить. Напишите в Telegram @DrSlon или на krivoshein.site/contacts/",
+      leadFail:
+        "Не удалось отправить заявку. Напишите @DrSlon или через форму контактов.",
+      greetHub:
+        "Здравствуйте! Я помощник Алексея Кривошеина (Dr.Slon): WordPress, VPS, боты, Директ, лендинги, AI-ready. Чем помочь?",
+      greetDefault:
+        "Здравствуйте! Я помощник Алексея Кривошеина. Могу рассказать об услугах и помочь с заявкой.",
+      tips: {
+        bots: "Есть вопросы по ботам?",
+        vps: "Нужна помощь с сервером?",
+        wordpress: "Помочь с WordPress?",
+        direct: "Вопросы по Директу?",
+        landing: "Нужен лендинг?",
+        "ai-ready": "Подготовить сайт к AI?",
+        hub: "Нужна помощь?",
+        general: "Нужна помощь?",
+      },
+      greets: {
+        bots:
+          "Здравствуйте! Я помощник Алексея Кривошеина. Здесь — чат-боты MAX и Telegram: заявки, CRM, уведомления, сценарии. Могу сориентировать по формату и цене «от», или помочь оставить заявку.",
+        vps:
+          "Здравствуйте! Помогу с VPS: Linux, Nginx, Docker, SSL, firewall, перенос. Настройка под ключ — от 10 000 ₽. Что нужно настроить?",
+        wordpress:
+          "Здравствуйте! Здесь — поддержка и доработка WordPress: обновления, бэкапы, безопасность, правки. Техподдержка — от 20 000 ₽/мес. Чем помочь?",
+        direct:
+          "Здравствуйте! Консультации, аудит, настройка и ведение Яндекс.Директ. Аудит — от 10 000 ₽. Что интересует?",
+        landing:
+          "Здравствуйте! Лендинги под ключ: визитка от 25 000 ₽, с SEO и блоками — от 45 000 ₽. Расскажите задачу — подскажу формат.",
+        "ai-ready":
+          "Здравствуйте! Подготовка сайта к нейропоиску и AI-агентам: Start / Pro / Bot-ready. Без обещаний «топ-1» — только честная техника и контент.",
+        hub: null,
+        general: null,
+      },
+      quick: {
+        bots: ["Сколько стоит бот?", "Какие сроки?", "Оставить заявку", "Другие услуги"],
+        vps: ["Настройка VPS", "Сколько стоит?", "Оставить заявку", "Другие услуги"],
+        wordpress: ["Техподдержка", "Доработка сайта", "Оставить заявку", "Другие услуги"],
+        direct: ["Аудит", "Ведение", "Оставить заявку", "Другие услуги"],
+        landing: ["Сколько стоит лендинг?", "Сроки", "Оставить заявку", "Другие услуги"],
+        "ai-ready": ["Пакеты Start / Pro", "Bot-ready", "Оставить заявку", "Другие услуги"],
+        hub: ["Прайс / услуги", "WordPress", "Оставить заявку", "Контакты"],
+        general: ["Какие услуги?", "Оставить заявку", "Telegram", "Контакты"],
+      },
+      leaveLead: "Оставить заявку",
+    },
+    en: {
+      title: "Dr.Slon Assistant",
+      subtitleDefault: "Services & leads",
+      openChat: "Open chat",
+      close: "Close",
+      tipAria: "Need help?",
+      tipClose: "Dismiss tip",
+      tipDefault: "Need help?",
+      placeholder: "Type your question…",
+      send: "Send",
+      formTitle: "Lead form",
+      need: "What do you need *",
+      needPh: "Briefly describe the task",
+      contact: "Contact *",
+      contactPh: "Telegram / phone / email",
+      budget: "Budget",
+      budgetPh: "from 40,000 ₽",
+      urgency: "Urgency",
+      urgencyNormal: "Normal",
+      urgencySoon: "Soon",
+      urgencyUrgent: "Very urgent",
+      topic: "Topic",
+      topicPh: "Bots / WordPress / …",
+      submit: "Send",
+      cancel: "Cancel",
+      leadBtn: "Lead",
+      price: "Pricing",
+      typing: "Typing…",
+      suggestLead: "You can leave a lead with the button below",
+      offline: "Chat is temporarily unavailable. Telegram: https://t.me/DrSlon",
+      chatFail:
+        "Could not reply. Message Telegram @DrSlon or krivoshein.site/contacts/",
+      leadFail:
+        "Could not send the lead. Message @DrSlon or use the contacts form.",
+      greetHub:
+        "Hi! I'm Alexey Krivoshein's assistant (Dr.Slon): WordPress, VPS, bots, Yandex Direct, landings, AI-ready. How can I help?",
+      greetDefault:
+        "Hi! I'm Alexey Krivoshein's assistant. I can outline services and help you leave a lead.",
+      tips: {
+        bots: "Questions about bots?",
+        vps: "Need help with a server?",
+        wordpress: "Help with WordPress?",
+        direct: "Questions about Yandex Direct?",
+        landing: "Need a landing page?",
+        "ai-ready": "Prepare a site for AI?",
+        hub: "Need help?",
+        general: "Need help?",
+      },
+      greets: {
+        bots:
+          "Hi! Chatbots for MAX and Telegram: leads, CRM, notifications, support flows. I can outline format and “from” pricing, or help you leave a lead.",
+        vps:
+          "Hi! I can help with VPS: Linux, Nginx, Docker, SSL, firewall, migrations. Turnkey setup from 10,000 ₽. What do you need?",
+        wordpress:
+          "Hi! WordPress support and development: updates, backups, security, fixes. Maintenance from 20,000 ₽/mo. How can I help?",
+        direct:
+          "Hi! Yandex Direct consulting, audit, setup and management. Audit from 10,000 ₽. What are you looking for?",
+        landing:
+          "Hi! Turnkey landings: simple from 25,000 ₽, with SEO blocks from 45,000 ₽. Tell me the goal — I'll suggest a format.",
+        "ai-ready":
+          "Hi! Preparing sites for AI search and agents: Start / Pro / Bot-ready. No “#1 rank” promises — solid tech and content only.",
+        hub: null,
+        general: null,
+      },
+      quick: {
+        bots: ["Bot pricing?", "Timeline?", "Leave a lead", "Other services"],
+        vps: ["VPS setup", "Pricing?", "Leave a lead", "Other services"],
+        wordpress: ["Maintenance", "Site fixes", "Leave a lead", "Other services"],
+        direct: ["Audit", "Management", "Leave a lead", "Other services"],
+        landing: ["Landing price?", "Timeline", "Leave a lead", "Other services"],
+        "ai-ready": ["Start / Pro packs", "Bot-ready", "Leave a lead", "Other services"],
+        hub: ["Pricing / services", "WordPress", "Leave a lead", "Contacts"],
+        general: ["What services?", "Leave a lead", "Telegram", "Contacts"],
+      },
+      leaveLead: "Leave a lead",
+    },
+  };
+
+  var currentLang = "ru";
 
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -42,6 +199,71 @@
     style.type = "text/css";
     style.appendChild(document.createTextNode(EMBEDDED_CSS));
     document.head.appendChild(style);
+  }
+
+  function t(key) {
+    var pack = I18N[currentLang] || I18N.ru;
+    if (pack[key] != null) return pack[key];
+    return I18N.ru[key] != null ? I18N.ru[key] : key;
+  }
+
+  function detectLang() {
+    try {
+      var html = document.documentElement;
+      var lang = (html.getAttribute("lang") || "").toLowerCase();
+      if (lang.indexOf("en") === 0) return "en";
+      if (lang.indexOf("ru") === 0) return "ru";
+      if (html.getAttribute("data-lang") === "en") return "en";
+      if (html.classList.contains("en") || html.classList.contains("lang-en"))
+        return "en";
+      var body = document.body;
+      if (body) {
+        if (body.getAttribute("data-lang") === "en") return "en";
+        if (body.classList.contains("en") || body.classList.contains("lang-en"))
+          return "en";
+      }
+      try {
+        var stored = localStorage.getItem("krv_lang");
+        if (stored === "en" || stored === "ru") return stored;
+      } catch (e) {}
+      var q = new URLSearchParams(location.search).get("lang");
+      if (q === "en" || q === "ru") return q;
+    } catch (e2) {}
+    return "ru";
+  }
+
+  function siteKeyFromHost() {
+    var host = (location.hostname || "").toLowerCase().replace(/^www\./, "");
+    var map = {
+      "bots.krivoshein.site": "bots",
+      "vps.krivoshein.site": "vps",
+      "wordpress.krivoshein.site": "wordpress",
+      "direct.krivoshein.site": "direct",
+      "landing.krivoshein.site": "landing",
+      "ai-ready.krivoshein.site": "ai-ready",
+      "krivoshein.site": "hub",
+    };
+    return map[host] || "general";
+  }
+
+  function localizedGreeting(siteKey) {
+    var pack = I18N[currentLang] || I18N.ru;
+    var g = pack.greets && pack.greets[siteKey];
+    if (g) return g;
+    if (siteKey === "hub") return pack.greetHub || pack.greetDefault;
+    return pack.greetDefault;
+  }
+
+  function localizedQuick(siteKey) {
+    var pack = I18N[currentLang] || I18N.ru;
+    var q = pack.quick && pack.quick[siteKey];
+    return q ? q.slice() : pack.quick.general.slice();
+  }
+
+  function proactiveHint() {
+    var pack = I18N[currentLang] || I18N.ru;
+    var key = siteKeyFromHost();
+    return (pack.tips && pack.tips[key]) || pack.tipDefault;
   }
 
   function isVisible(el) {
@@ -80,7 +302,11 @@
       consider(el, 10);
     });
 
-    if (maxBottom < 40 && window.matchMedia && window.matchMedia("(max-width: 767.98px)").matches) {
+    if (
+      maxBottom < 40 &&
+      window.matchMedia &&
+      window.matchMedia("(max-width: 767.98px)").matches
+    ) {
       var bar = document.querySelector(".mobile-cta-bar");
       if (bar) {
         var d = window.getComputedStyle(bar).display;
@@ -96,19 +322,258 @@
     root.style.setProperty("--krv-a-stack-bottom", stack + "px");
   }
 
+  function getSession() {
+    try {
+      return localStorage.getItem(STORAGE_KEY) || "";
+    } catch (e) {
+      return "";
+    }
+  }
 
+  function setSession(id) {
+    try {
+      localStorage.setItem(STORAGE_KEY, id);
+    } catch (e) {}
+  }
 
-  function proactiveHint() {
-    var host = (location.hostname || "").toLowerCase().replace(/^www\./, "");
-    var map = {
-      "bots.krivoshein.site": "Есть вопросы по ботам?",
-      "vps.krivoshein.site": "Нужна помощь с сервером?",
-      "wordpress.krivoshein.site": "Помочь с WordPress?",
-      "direct.krivoshein.site": "Вопросы по Директу?",
-      "landing.krivoshein.site": "Нужен лендинг?",
-      "ai-ready.krivoshein.site": "Подготовить сайт к AI?",
+  function hostPath() {
+    return { host: location.hostname, path: location.pathname || "/" };
+  }
+
+  function iconChat() {
+    return (
+      '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+      '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>' +
+      "</svg>"
+    );
+  }
+
+  function formHtml() {
+    return (
+      '<p class="krv-a-form-title" data-i18n="formTitle"></p>' +
+      '<label class="krv-a-field"><span data-i18n="need"></span>' +
+      '<textarea name="need" rows="2" required maxlength="4000" data-i18n-ph="needPh"></textarea></label>' +
+      '<label class="krv-a-field"><span data-i18n="contact"></span>' +
+      '<input name="contact" required maxlength="300" data-i18n-ph="contactPh" autocomplete="tel"></label>' +
+      '<div class="krv-a-field-row">' +
+      '<label class="krv-a-field"><span data-i18n="budget"></span>' +
+      '<input name="budget" maxlength="200" data-i18n-ph="budgetPh"></label>' +
+      '<label class="krv-a-field"><span data-i18n="urgency"></span>' +
+      '<select name="urgency">' +
+      '<option value="normal" data-i18n="urgencyNormal"></option>' +
+      '<option value="soon" data-i18n="urgencySoon"></option>' +
+      '<option value="urgent" data-i18n="urgencyUrgent"></option>' +
+      "</select></label></div>" +
+      '<label class="krv-a-field"><span data-i18n="topic"></span>' +
+      '<input name="topic" maxlength="200" data-i18n-ph="topicPh"></label>' +
+      '<label class="krv-a-hp" aria-hidden="true">Site<input name="website" tabindex="-1" autocomplete="off"></label>' +
+      '<div class="krv-a-form-actions">' +
+      '<button type="submit" class="krv-a-btn primary" data-i18n="submit"></button>' +
+      '<button type="button" class="krv-a-btn ghost" data-cancel-lead data-i18n="cancel"></button>' +
+      "</div>"
+    );
+  }
+
+  function applyI18n(ui) {
+    if (!ui) return;
+    currentLang = detectLang();
+    ui.root.setAttribute("data-lang", currentLang);
+    ui.h2.textContent = t("title");
+    if (!ui.sub.dataset.locked) {
+      ui.sub.textContent = t("subtitleDefault");
+    }
+    ui.bubble.setAttribute("aria-label", t("openChat"));
+    ui.closeBtn.setAttribute("aria-label", t("close"));
+    ui.tip.setAttribute("aria-label", t("tipAria"));
+    ui.tipX.setAttribute("aria-label", t("tipClose"));
+    ui.ta.placeholder = t("placeholder");
+    ui.send.setAttribute("aria-label", t("send"));
+    if (ui.tipText && !ui.root.classList.contains("is-nudge")) {
+      ui.tipText.textContent = t("tipDefault");
+    } else if (ui.tipText && ui.root.classList.contains("is-nudge")) {
+      ui.tipText.textContent = proactiveHint();
+    }
+    ui.form.querySelectorAll("[data-i18n]").forEach(function (node) {
+      var k = node.getAttribute("data-i18n");
+      if (k) node.textContent = t(k);
+    });
+    ui.form.querySelectorAll("[data-i18n-ph]").forEach(function (node) {
+      var k = node.getAttribute("data-i18n-ph");
+      if (k) node.setAttribute("placeholder", t(k));
+    });
+  }
+
+  function createUI() {
+    var wrap = document.createElement("div");
+    wrap.className = "krv-assistant";
+    wrap.setAttribute("data-side", SIDE === "left" ? "left" : "right");
+    wrap.setAttribute("aria-live", "polite");
+    wrap.setAttribute("role", "region");
+    wrap.setAttribute("aria-label", "AI assistant");
+
+    var panel = el("div", "krv-a-panel");
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-label", "Dr.Slon Assistant");
+
+    var head = el("div", "krv-a-head");
+    var headLeft = el("div", "krv-a-head-left");
+    var avatar = el("div", "krv-a-avatar", "DS");
+    var titles = el("div", "krv-a-titles");
+    var h2 = el("div", "krv-a-title", "Dr.Slon Assistant");
+    var sub = el("div", "krv-a-sub", "…");
+    titles.appendChild(h2);
+    titles.appendChild(sub);
+    headLeft.appendChild(avatar);
+    headLeft.appendChild(titles);
+    var closeBtn = el("button", "krv-a-close", "×");
+    closeBtn.type = "button";
+    head.appendChild(headLeft);
+    head.appendChild(closeBtn);
+
+    var msgs = el("div", "krv-a-msgs");
+    var quick = el("div", "krv-a-quick");
+    var handoff = el("div", "krv-a-handoff");
+
+    var form = el("form", "krv-a-form");
+    form.innerHTML = formHtml();
+
+    var composer = el("div", "krv-a-composer");
+    var ta = el("textarea");
+    ta.rows = 1;
+    var send = el("button", "krv-a-send", "→");
+    send.type = "button";
+    composer.appendChild(ta);
+    composer.appendChild(send);
+
+    var bubble = el("button", "krv-a-bubble");
+    bubble.type = "button";
+    bubble.innerHTML = iconChat();
+
+    var tip = el("button", "krv-a-tip");
+    tip.type = "button";
+    tip.setAttribute("hidden", "hidden");
+    var tipText = el("span", "krv-a-tip-text", "");
+    var tipX = el("span", "krv-a-tip-x", "×");
+    tipX.setAttribute("role", "button");
+    tipX.tabIndex = 0;
+    tip.appendChild(tipText);
+    tip.appendChild(tipX);
+
+    var nudgeWrap = el("div", "krv-a-nudge-wrap");
+    nudgeWrap.appendChild(tip);
+    nudgeWrap.appendChild(bubble);
+
+    panel.appendChild(head);
+    panel.appendChild(msgs);
+    panel.appendChild(quick);
+    panel.appendChild(handoff);
+    panel.appendChild(form);
+    panel.appendChild(composer);
+    wrap.appendChild(panel);
+    wrap.appendChild(nudgeWrap);
+    document.body.appendChild(wrap);
+
+    return {
+      root: wrap,
+      panel: panel,
+      h2: h2,
+      sub: sub,
+      msgs: msgs,
+      quick: quick,
+      handoff: handoff,
+      form: form,
+      composer: composer,
+      ta: ta,
+      send: send,
+      bubble: bubble,
+      tip: tip,
+      tipText: tipText,
+      tipX: tipX,
+      closeBtn: closeBtn,
     };
-    return map[host] || "Нужна помощь?";
+  }
+
+  function addMsg(ui, role, text) {
+    var m = el("div", "krv-a-msg " + role, text);
+    ui.msgs.appendChild(m);
+    ui.msgs.scrollTop = ui.msgs.scrollHeight;
+    return m;
+  }
+
+  function setQuick(ui, items, onPick) {
+    ui.quick.innerHTML = "";
+    (items || []).forEach(function (label) {
+      var b = el("button", "krv-a-chip", label);
+      b.type = "button";
+      b.addEventListener("click", function () {
+        onPick(label);
+      });
+      ui.quick.appendChild(b);
+    });
+  }
+
+  function setHandoff(ui, h) {
+    ui.handoff.innerHTML = "";
+    if (!h) return;
+    var links = [
+      [h.telegram_url, h.telegram_label || "Telegram"],
+      [h.max_url, h.max_label || "MAX"],
+      [h.contacts_url, h.contacts_label || (currentLang === "en" ? "Contacts" : "Контакты")],
+      [h.price_url, t("price")],
+    ];
+    links.forEach(function (pair) {
+      if (!pair[0]) return;
+      var a = el("a", null, pair[1]);
+      a.href = pair[0];
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      ui.handoff.appendChild(a);
+    });
+    var lead = el("button", "krv-a-chip", t("leadBtn"));
+    lead.type = "button";
+    lead.addEventListener("click", function () {
+      showLeadForm(ui, true);
+    });
+    ui.handoff.appendChild(lead);
+  }
+
+  function showLeadForm(ui, on) {
+    if (on) {
+      ui.form.classList.add("is-on");
+      ui.composer.classList.add("is-hidden");
+      ui.quick.style.display = "none";
+    } else {
+      ui.form.classList.remove("is-on");
+      ui.composer.classList.remove("is-hidden");
+      ui.quick.style.display = "";
+    }
+  }
+
+  function openPanel(ui, open) {
+    if (open) ui.root.classList.add("is-open");
+    else ui.root.classList.remove("is-open");
+  }
+
+  async function api(path, body) {
+    var res = await fetch(API + path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(body),
+      credentials: "omit",
+      mode: "cors",
+    });
+    var data = null;
+    try {
+      data = await res.json();
+    } catch (e) {
+      data = null;
+    }
+    if (!res.ok) {
+      var detail =
+        (data && (data.detail || data.message)) || "Error " + res.status;
+      throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+    }
+    return data;
   }
 
   function isProactiveDismissed() {
@@ -176,7 +641,6 @@
     state.proactiveDone = false;
     state.nudgeVisible = false;
     state.idleTimer = null;
-    state.scrollAccum = 0;
     state.lastScrollY = window.scrollY || window.pageYOffset || 0;
 
     function clearIdle() {
@@ -197,20 +661,13 @@
 
     function onActivity(ev) {
       if (state.proactiveDone && !state.nudgeVisible) return;
-      // soft-ignore tiny mousemove noise: still reset timer
       if (ev && ev.type === "scroll") {
         var y = window.scrollY || window.pageYOffset || 0;
         var dy = Math.abs(y - state.lastScrollY);
         state.lastScrollY = y;
-        state.scrollAccum += dy;
-        // ignore micro-scroll jitter under threshold for "meaningful" activity flag,
-        // but still reset timer so reading slowly doesn't fire mid-scroll
         if (dy < 2) return;
       }
-      if (state.nudgeVisible) {
-        // activity while tip visible: do not auto-hide (user may be reading)
-        return;
-      }
+      if (state.nudgeVisible) return;
       armIdle();
     }
 
@@ -228,236 +685,9 @@
       true
     );
 
-    // start after short delay so initial page load scroll doesn't count as engagement forever
     setTimeout(armIdle, 800);
     state._armIdle = armIdle;
     state._clearIdle = clearIdle;
-  }
-
-
-  function getSession() {
-    try {
-      return localStorage.getItem(STORAGE_KEY) || "";
-    } catch (e) {
-      return "";
-    }
-  }
-
-  function setSession(id) {
-    try {
-      localStorage.setItem(STORAGE_KEY, id);
-    } catch (e) {}
-  }
-
-  function hostPath() {
-    return { host: location.hostname, path: location.pathname || "/" };
-  }
-
-  function iconChat() {
-    return (
-      '<svg viewBox="0 0 24 24" aria-hidden="true">' +
-      '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>' +
-      "</svg>"
-    );
-  }
-
-  function createUI() {
-    var wrap = document.createElement("div");
-    wrap.className = "krv-assistant";
-    wrap.setAttribute("data-side", SIDE === "left" ? "left" : "right");
-    wrap.setAttribute("aria-live", "polite");
-    wrap.setAttribute("role", "region");
-    wrap.setAttribute("aria-label", "AI assistant");
-
-    var panel = el("div", "krv-a-panel");
-    panel.setAttribute("role", "dialog");
-    panel.setAttribute("aria-label", "Помощник Dr.Slon");
-
-    var head = el("div", "krv-a-head");
-    var headLeft = el("div", "krv-a-head-left");
-    var avatar = el("div", "krv-a-avatar", "DS");
-    var titles = el("div", "krv-a-titles");
-    var h2 = el("h2", null, "Помощник Dr.Slon");
-    var sub = el("p", null, "Загрузка…");
-    titles.appendChild(h2);
-    titles.appendChild(sub);
-    headLeft.appendChild(avatar);
-    headLeft.appendChild(titles);
-    var closeBtn = el("button", "krv-a-close", "×");
-    closeBtn.type = "button";
-    closeBtn.setAttribute("aria-label", "Закрыть");
-    head.appendChild(headLeft);
-    head.appendChild(closeBtn);
-
-    var msgs = el("div", "krv-a-msgs");
-    var quick = el("div", "krv-a-quick");
-    var handoff = el("div", "krv-a-handoff");
-
-    var form = el("form", "krv-a-form");
-    form.innerHTML =
-      '<p class="krv-a-form-title">Заявка</p>' +
-      '<label class="krv-a-field"><span>Что нужно *</span>' +
-      '<textarea name="need" rows="2" required maxlength="4000" placeholder="Кратко опишите задачу"></textarea></label>' +
-      '<label class="krv-a-field"><span>Контакт *</span>' +
-      '<input name="contact" required maxlength="300" placeholder="Telegram / телефон / email" autocomplete="tel"></label>' +
-      '<div class="krv-a-field-row">' +
-      '<label class="krv-a-field"><span>Бюджет</span>' +
-      '<input name="budget" maxlength="200" placeholder="от 40 000 ₽"></label>' +
-      '<label class="krv-a-field"><span>Срочность</span>' +
-      '<select name="urgency">' +
-      '<option>Обычная</option><option>Срочно</option><option>Очень срочно</option>' +
-      "</select></label></div>" +
-      '<label class="krv-a-field"><span>Тема</span>' +
-      '<input name="topic" maxlength="200" placeholder="Боты / WordPress / …"></label>' +
-      '<label class="krv-a-hp" aria-hidden="true">Сайт<input name="website" tabindex="-1" autocomplete="off"></label>' +
-      '<div class="krv-a-form-actions">' +
-      '<button type="submit" class="krv-a-btn primary">Отправить</button>' +
-      '<button type="button" class="krv-a-btn ghost" data-cancel-lead>Отмена</button>' +
-      "</div>";
-
-    var composer = el("div", "krv-a-composer");
-    var ta = el("textarea");
-    ta.rows = 1;
-    ta.placeholder = "Напишите вопрос…";
-    ta.setAttribute("aria-label", "Сообщение");
-    var send = el("button", "krv-a-send", "→");
-    send.type = "button";
-    send.setAttribute("aria-label", "Отправить");
-    composer.appendChild(ta);
-    composer.appendChild(send);
-
-    var bubble = el("button", "krv-a-bubble");
-    bubble.type = "button";
-    bubble.setAttribute("aria-label", "Открыть чат");
-    bubble.innerHTML = iconChat();
-
-    var tip = el("button", "krv-a-tip");
-    tip.type = "button";
-    tip.setAttribute("aria-label", "Нужна помощь?");
-    tip.setAttribute("hidden", "hidden");
-    var tipText = el("span", "krv-a-tip-text", "Нужна помощь?");
-    var tipX = el("span", "krv-a-tip-x", "×");
-    tipX.setAttribute("role", "button");
-    tipX.setAttribute("aria-label", "Закрыть подсказку");
-    tipX.tabIndex = 0;
-    tip.appendChild(tipText);
-    tip.appendChild(tipX);
-
-    var nudgeWrap = el("div", "krv-a-nudge-wrap");
-    nudgeWrap.appendChild(tip);
-    nudgeWrap.appendChild(bubble);
-
-    panel.appendChild(head);
-    panel.appendChild(msgs);
-    panel.appendChild(quick);
-    panel.appendChild(handoff);
-    panel.appendChild(form);
-    panel.appendChild(composer);
-    wrap.appendChild(panel);
-    wrap.appendChild(nudgeWrap);
-    document.body.appendChild(wrap);
-
-    return {
-      root: wrap,
-      panel: panel,
-      h2: h2,
-      sub: sub,
-      msgs: msgs,
-      quick: quick,
-      handoff: handoff,
-      form: form,
-      composer: composer,
-      ta: ta,
-      send: send,
-      bubble: bubble,
-      tip: tip,
-      tipText: tipText,
-      tipX: tipX,
-      closeBtn: closeBtn,
-    };
-  }
-
-  function addMsg(ui, role, text) {
-    var m = el("div", "krv-a-msg " + role, text);
-    ui.msgs.appendChild(m);
-    ui.msgs.scrollTop = ui.msgs.scrollHeight;
-    return m;
-  }
-
-  function setQuick(ui, items, onPick) {
-    ui.quick.innerHTML = "";
-    (items || []).forEach(function (label) {
-      var b = el("button", "krv-a-chip", label);
-      b.type = "button";
-      b.addEventListener("click", function () {
-        onPick(label);
-      });
-      ui.quick.appendChild(b);
-    });
-  }
-
-  function setHandoff(ui, h) {
-    ui.handoff.innerHTML = "";
-    if (!h) return;
-    var links = [
-      [h.telegram_url, h.telegram_label || "Telegram"],
-      [h.max_url, h.max_label || "MAX"],
-      [h.contacts_url, h.contacts_label || "Контакты"],
-      [h.price_url, "Прайс"],
-    ];
-    links.forEach(function (pair) {
-      if (!pair[0]) return;
-      var a = el("a", null, pair[1]);
-      a.href = pair[0];
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      ui.handoff.appendChild(a);
-    });
-    var lead = el("button", "krv-a-chip", "Заявка");
-    lead.type = "button";
-    lead.addEventListener("click", function () {
-      showLeadForm(ui, true);
-    });
-    ui.handoff.appendChild(lead);
-  }
-
-  function showLeadForm(ui, on) {
-    if (on) {
-      ui.form.classList.add("is-on");
-      ui.composer.classList.add("is-hidden");
-      ui.quick.style.display = "none";
-    } else {
-      ui.form.classList.remove("is-on");
-      ui.composer.classList.remove("is-hidden");
-      ui.quick.style.display = "";
-    }
-  }
-
-  function openPanel(ui, open) {
-    if (open) ui.root.classList.add("is-open");
-    else ui.root.classList.remove("is-open");
-  }
-
-  async function api(path, body) {
-    var res = await fetch(API + path, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(body),
-      credentials: "omit",
-      mode: "cors",
-    });
-    var data = null;
-    try {
-      data = await res.json();
-    } catch (e) {
-      data = null;
-    }
-    if (!res.ok) {
-      var detail =
-        (data && (data.detail || data.message)) || "Ошибка " + res.status;
-      throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
-    }
-    return data;
   }
 
   async function bootstrap(ui, state) {
@@ -470,22 +700,57 @@
     state.sessionId = data.session_id;
     setSession(data.session_id);
     state.handoff = data.handoff;
-    ui.h2.textContent = data.title || "Помощник Dr.Slon";
-    ui.sub.textContent = data.subtitle || data.site_label || "";
+    state.siteKey = data.site_key || siteKeyFromHost();
+
+    applyI18n(ui);
+    ui.h2.textContent = t("title");
+    ui.sub.textContent =
+      currentLang === "en"
+        ? data.site_label || t("subtitleDefault")
+        : data.subtitle || data.site_label || t("subtitleDefault");
+    ui.sub.dataset.locked = "1";
+
     if (!state.greeted) {
-      addMsg(ui, "bot", data.greeting || "Здравствуйте!");
+      var greet =
+        currentLang === "en"
+          ? localizedGreeting(state.siteKey)
+          : data.greeting || localizedGreeting(state.siteKey);
+      addMsg(ui, "bot", greet);
       state.greeted = true;
     }
-    setQuick(ui, data.quick_replies || [], function (label) {
-      if (label === "Оставить заявку" || label === "Заявка") {
+
+    var quick =
+      currentLang === "en"
+        ? localizedQuick(state.siteKey)
+        : data.quick_replies && data.quick_replies.length
+          ? data.quick_replies
+          : localizedQuick(state.siteKey);
+
+    setQuick(ui, quick, function (label) {
+      if (
+        label === t("leaveLead") ||
+        label === t("leadBtn") ||
+        label === "Оставить заявку" ||
+        label === "Leave a lead" ||
+        label === "Заявка" ||
+        label === "Lead"
+      ) {
         showLeadForm(ui, true);
         return;
       }
-      if (label === "Telegram" && data.handoff && data.handoff.telegram_url) {
+      if (
+        (label === "Telegram" || label.indexOf("Telegram") === 0) &&
+        data.handoff &&
+        data.handoff.telegram_url
+      ) {
         window.open(data.handoff.telegram_url, "_blank", "noopener");
         return;
       }
-      if (label === "Контакты" && data.handoff && data.handoff.contacts_url) {
+      if (
+        (label === "Контакты" || label === "Contacts") &&
+        data.handoff &&
+        data.handoff.contacts_url
+      ) {
         window.open(data.handoff.contacts_url, "_blank", "noopener");
         return;
       }
@@ -501,7 +766,7 @@
     ui.send.disabled = true;
     addMsg(ui, "user", text);
     ui.ta.value = "";
-    var typing = el("div", "krv-a-typing", "Печатает…");
+    var typing = el("div", "krv-a-typing", t("typing"));
     ui.msgs.appendChild(typing);
     ui.msgs.scrollTop = ui.msgs.scrollHeight;
 
@@ -516,9 +781,9 @@
       });
       typing.remove();
       addMsg(ui, "bot", data.reply || "…");
-      if (data.quick_replies && data.quick_replies.length) {
+      if (data.quick_replies && data.quick_replies.length && currentLang === "ru") {
         setQuick(ui, data.quick_replies, function (label) {
-          if (label === "Оставить заявку" || label === "Заявка") {
+          if (label === t("leaveLead") || label === "Оставить заявку") {
             showLeadForm(ui, true);
             return;
           }
@@ -526,21 +791,25 @@
         });
       }
       if (data.suggest_lead) {
-        addMsg(ui, "sys", "Можно оставить заявку кнопкой ниже");
+        addMsg(ui, "sys", t("suggestLead"));
       }
     } catch (err) {
       typing.remove();
-      addMsg(
-        ui,
-        "bot",
-        "Не удалось ответить. Напишите в Telegram @DrSlon или на krivoshein.site/contacts/"
-      );
+      addMsg(ui, "bot", t("chatFail"));
       console.warn("[krv-assistant]", err);
     } finally {
       state.busy = false;
       ui.send.disabled = false;
       ui.ta.focus();
     }
+  }
+
+  function urgencyLabelToApi(val) {
+    // map select values to Russian API-friendly labels the backend already accepts
+    if (val === "soon" || val === "Срочно" || val === "Soon") return "Срочно";
+    if (val === "urgent" || val === "Очень срочно" || val === "Very urgent")
+      return "Очень срочно";
+    return "Обычная";
   }
 
   async function submitLead(ui, state, formEl) {
@@ -553,23 +822,19 @@
       topic: String(fd.get("topic") || ""),
       need: String(fd.get("need") || ""),
       budget: String(fd.get("budget") || ""),
-      urgency: String(fd.get("urgency") || "Обычная"),
+      urgency: urgencyLabelToApi(String(fd.get("urgency") || "normal")),
       contact: String(fd.get("contact") || ""),
       website: String(fd.get("website") || ""),
     };
     state.busy = true;
     try {
       var data = await api("/lead", payload);
-      addMsg(ui, "bot", data.message || "Заявка отправлена.");
+      addMsg(ui, "bot", data.message || (currentLang === "en" ? "Lead sent." : "Заявка отправлена."));
       showLeadForm(ui, false);
       formEl.reset();
       if (data.handoff) setHandoff(ui, data.handoff);
     } catch (err) {
-      addMsg(
-        ui,
-        "bot",
-        "Не удалось отправить заявку. Напишите @DrSlon или через форму контактов."
-      );
+      addMsg(ui, "bot", t("leadFail"));
       console.warn("[krv-assistant]", err);
     } finally {
       state.busy = false;
@@ -591,11 +856,7 @@
           state.bootstrapped = true;
         })
         .catch(function (err) {
-          addMsg(
-            ui,
-            "bot",
-            "Чат временно недоступен. Telegram: https://t.me/DrSlon"
-          );
+          addMsg(ui, "bot", t("offline"));
           console.warn("[krv-assistant] bootstrap", err);
         });
     }
@@ -613,7 +874,10 @@
       openChat(ui, state);
     });
     ui.tip.addEventListener("click", function (e) {
-      if (e.target === ui.tipX || (e.target && e.target.classList && e.target.classList.contains("krv-a-tip-x"))) {
+      if (
+        e.target === ui.tipX ||
+        (e.target && e.target.classList && e.target.classList.contains("krv-a-tip-x"))
+      ) {
         return;
       }
       openChat(ui, state);
@@ -656,18 +920,72 @@
     }
   }
 
+  function watchLangAndTheme(ui, state) {
+    var html = document.documentElement;
+    var lastLang = detectLang();
+    var lastTheme = html.getAttribute("data-theme") || "";
+
+    function refresh() {
+      var lang = detectLang();
+      var theme = html.getAttribute("data-theme") || "";
+      if (lang !== lastLang) {
+        lastLang = lang;
+        applyI18n(ui);
+        if (state.bootstrapped) {
+          ui.h2.textContent = t("title");
+          if (state.handoff) setHandoff(ui, state.handoff);
+          var sk = state.siteKey || siteKeyFromHost();
+          setQuick(ui, localizedQuick(sk), function (label) {
+            if (label === t("leaveLead") || label === t("leadBtn")) {
+              showLeadForm(ui, true);
+              return;
+            }
+            sendMessage(ui, state, label);
+          });
+        }
+      }
+      if (theme !== lastTheme) {
+        lastTheme = theme;
+        // CSS vars switch via html[data-theme]; force reflow paint
+        ui.root.style.display = "none";
+        void ui.root.offsetHeight;
+        ui.root.style.display = "";
+      }
+    }
+
+    if (typeof MutationObserver !== "undefined") {
+      var mo = new MutationObserver(refresh);
+      mo.observe(html, {
+        attributes: true,
+        attributeFilter: ["lang", "data-theme", "data-lang", "class"],
+      });
+      if (document.body) {
+        mo.observe(document.body, {
+          attributes: true,
+          attributeFilter: ["data-lang", "class"],
+        });
+      }
+    }
+    // periodic light poll for SPA-like lang switches
+    setInterval(refresh, 1500);
+  }
+
   function init() {
     loadCss();
+    currentLang = detectLang();
     var ui = createUI();
+    applyI18n(ui);
     var state = {
       sessionId: getSession(),
       bootstrapped: false,
       greeted: false,
       busy: false,
       handoff: null,
+      siteKey: siteKeyFromHost(),
     };
     bind(ui, state);
     setupProactive(ui, state);
+    watchLangAndTheme(ui, state);
     updateStackOffset(ui.root);
     var onResize = function () {
       updateStackOffset(ui.root);
