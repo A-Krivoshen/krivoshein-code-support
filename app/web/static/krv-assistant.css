@@ -111,6 +111,47 @@
     pointer-events: none !important;
     visibility: hidden !important;
   }
+
+  /* Compact header on phones — more room for msgs + composer */
+  .krv-assistant .krv-a-head {
+    gap: 8px;
+    padding: 8px 10px 7px;
+    align-items: center;
+  }
+
+  .krv-assistant .krv-a-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    font-size: 12px;
+  }
+
+  .krv-assistant .krv-a-head h2,
+  .krv-assistant .krv-a-head .krv-a-title {
+    font-size: 11.5px !important;
+  }
+
+  .krv-assistant .krv-a-head p,
+  .krv-assistant .krv-a-head .krv-a-sub {
+    font-size: 10.5px !important;
+    margin-top: 1px !important;
+  }
+
+  .krv-assistant .krv-a-close {
+    width: 28px;
+    height: 28px;
+    font-size: 18px;
+  }
+
+  /*
+   * Quick-replies / handoff chips: hide on mobile entirely.
+   * They eat ~80–120px and with the soft keyboard msgs+composer vanish.
+   * Desktop (≥768) keeps chips unchanged.
+   */
+  .krv-assistant .krv-a-quick,
+  .krv-assistant .krv-a-handoff {
+    display: none !important;
+  }
 }
 
 .krv-assistant *,
@@ -585,34 +626,87 @@ html[data-theme="dark"] .krv-assistant .krv-a-msg a.krv-a-link:hover,
 
 /* —— Mobile open panel + lead form (class .is-lead from JS) —— */
 @media (max-width: 767.98px) {
-  /* Panel height tracks visual viewport (keyboard-safe).
+  /*
+   * Panel height tracks visualViewport (--krv-a-vv-h from JS).
    * Root bottom already includes stack + keyboard-inset, so free
-   * height for (panel + gap + bubble) is vv - stack - safe. */
+   * column height is: vv - stack - safe - (bubble+gap when visible).
+   */
   .krv-assistant.is-open .krv-a-panel {
     height: min(
       520px,
       calc(
         var(--krv-a-vv-h, 100dvh) - var(--krv-a-stack-bottom) -
           env(safe-area-inset-bottom, 0px) - var(--krv-a-bubble-size) -
-          var(--krv-a-gap) - 12px
+          var(--krv-a-gap) - 8px
       )
     );
     max-height: calc(
       var(--krv-a-vv-h, 100dvh) - var(--krv-a-stack-bottom) -
         env(safe-area-inset-bottom, 0px) - var(--krv-a-bubble-size) -
-        var(--krv-a-gap) - 12px
+        var(--krv-a-gap) - 8px
     );
     min-height: 0;
   }
 
-  /* Chat mode: ensure msgs + composer + chips can scroll if needed */
+  /* Chat mode: msgs flex, composer stays pinned at bottom of panel */
   .krv-assistant.is-open:not(.is-lead) .krv-a-panel {
     overflow: hidden;
   }
 
   .krv-assistant.is-open:not(.is-lead) .krv-a-msgs {
     flex: 1 1 auto;
-    min-height: 80px;
+    min-height: 48px;
+  }
+
+  .krv-assistant.is-open:not(.is-lead) .krv-a-composer {
+    flex: 0 0 auto;
+    padding: 8px 10px 10px;
+  }
+
+  .krv-assistant.is-open:not(.is-lead) .krv-a-composer textarea {
+    min-height: 40px;
+    max-height: 72px;
+    font-size: 16px; /* iOS: avoid focus zoom */
+  }
+
+  /*
+   * Soft keyboard open (class .is-kb-open from visualViewport / focus).
+   * Free almost the full visual viewport: hide bubble, drop gap, grow panel.
+   */
+  .krv-assistant.is-open.is-kb-open {
+    gap: 0;
+  }
+
+  .krv-assistant.is-open.is-kb-open .krv-a-bubble,
+  .krv-assistant.is-open.is-kb-open .krv-a-nudge-wrap,
+  .krv-assistant.is-open.is-kb-open .krv-a-tip {
+    display: none !important;
+  }
+
+  .krv-assistant.is-open.is-kb-open .krv-a-panel {
+    height: calc(
+      var(--krv-a-vv-h, 100dvh) - var(--krv-a-stack-bottom) -
+        env(safe-area-inset-bottom, 0px) - 6px
+    );
+    max-height: calc(
+      var(--krv-a-vv-h, 100dvh) - var(--krv-a-stack-bottom) -
+        env(safe-area-inset-bottom, 0px) - 6px
+    );
+    min-height: 0;
+    border-radius: 12px 12px 0 0;
+  }
+
+  .krv-assistant.is-open.is-kb-open .krv-a-head {
+    padding: 6px 8px 5px;
+  }
+
+  .krv-assistant.is-open.is-kb-open:not(.is-lead) .krv-a-msgs {
+    min-height: 0;
+    padding: 8px 10px 6px;
+  }
+
+  .krv-assistant.is-open.is-kb-open:not(.is-lead) .krv-a-composer {
+    padding: 6px 8px 8px;
   }
 
   /* Lead mode: give the form almost the entire panel */
@@ -696,7 +790,7 @@ html[data-theme="dark"] .krv-assistant .krv-a-msg a.krv-a-link:hover,
   /* Very short viewports (keyboard open or SE): tighter lead chrome */
   @media (max-height: 520px) {
     .krv-assistant.is-lead .krv-a-head {
-      padding: 8px 10px 6px;
+      padding: 6px 8px 5px;
     }
     .krv-assistant.is-lead .krv-a-form.is-on {
       gap: 4px;
