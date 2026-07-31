@@ -259,8 +259,10 @@ class WebAssistantService:
             messages.append({"role": "user", "content": user_content})
             try:
                 reply_text = await self._llm.chat(messages)
+                provider = getattr(self._llm, "last_provider", None) or "unknown"
+                logger.info("Web chat LLM provider=%s session=%s", provider, session_id[:8])
             except LlmError as exc:
-                logger.warning("Web LLM failed: %s", exc)
+                logger.warning("Web LLM failed (after fallbacks): %s", exc)
                 reply_text = None
             except Exception:
                 logger.exception("Web LLM unexpected error")
@@ -282,6 +284,12 @@ class WebAssistantService:
                     retry = await self._llm.chat(retry_messages)
                     if retry and _looks_english(retry):
                         reply_text = retry
+                        provider = getattr(self._llm, "last_provider", None) or "unknown"
+                        logger.info(
+                            "Web chat LLM provider=%s session=%s (lang-retry)",
+                            provider,
+                            session_id[:8],
+                        )
                 except Exception:
                     logger.warning("Web LLM English retry failed", exc_info=True)
             elif reply_text and (not user_en) and _looks_english(reply_text):
@@ -301,6 +309,12 @@ class WebAssistantService:
                     retry = await self._llm.chat(retry_messages)
                     if retry and not _looks_english(retry):
                         reply_text = retry
+                        provider = getattr(self._llm, "last_provider", None) or "unknown"
+                        logger.info(
+                            "Web chat LLM provider=%s session=%s (lang-retry)",
+                            provider,
+                            session_id[:8],
+                        )
                 except Exception:
                     logger.warning("Web LLM Russian retry failed", exc_info=True)
         else:
@@ -308,6 +322,10 @@ class WebAssistantService:
 
         if not reply_text:
             reply_text = self._fallback_reply(message, profile)
+            logger.info(
+                "Web chat LLM provider=offline session=%s",
+                session_id[:8],
+            )
 
         await self._store.append_message(session_id, "user", message)
         await self._store.append_message(session_id, "assistant", reply_text)

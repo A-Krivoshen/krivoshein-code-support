@@ -54,6 +54,26 @@ class Settings(BaseSettings):
     # TTL истории диалога (часы)
     llm_history_ttl_hours: int = Field(default=24, alias="LLM_HISTORY_TTL_HOURS")
 
+    # --- GigaChat (fallback when Groq fails) ---
+    gigachat_enabled: bool = Field(default=False, alias="GIGACHAT_ENABLED")
+    gigachat_client_id: str | None = Field(default=None, alias="GIGACHAT_CLIENT_ID")
+    # Base64 authorization key (Client ID:Client Secret). Never log this value.
+    gigachat_auth_key: str | None = Field(default=None, alias="GIGACHAT_AUTH_KEY")
+    gigachat_scope: str = Field(default="GIGACHAT_API_PERS", alias="GIGACHAT_SCOPE")
+    gigachat_model: str = Field(default="GigaChat-2-Pro", alias="GIGACHAT_MODEL")
+    gigachat_base_url: str = Field(
+        default="https://api.giga.chat/v1",
+        alias="GIGACHAT_BASE_URL",
+    )
+    gigachat_oauth_url: str = Field(
+        default="https://ngw.devices.sberbank.ru:9443/api/v2/oauth",
+        alias="GIGACHAT_OAUTH_URL",
+    )
+    gigachat_timeout: float = Field(default=15.0, alias="GIGACHAT_TIMEOUT")
+    # Sber hosts often present a chain not in system trust store (Russian CA).
+    # Default false for reliability; set true if Russian trusted CA is installed.
+    gigachat_verify_ssl: bool = Field(default=False, alias="GIGACHAT_VERIFY_SSL")
+
     # --- Web AI Popup Assistant ---
     web_assistant_enabled: bool = Field(default=True, alias="WEB_ASSISTANT_ENABLED")
     # Comma-separated origins. Empty or * → allow *.krivoshein.site

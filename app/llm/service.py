@@ -101,8 +101,10 @@ class LlmService:
 
         try:
             answer = await self._client.chat(messages)
+            provider = getattr(self._client, "last_provider", None) or "unknown"
+            logger.info("LLM reply provider=%s chat_id=%s", provider, chat_id)
         except LlmError as exc:
-            logger.warning("LLM reply failed: %s", exc)
+            logger.warning("LLM reply failed (after fallbacks): %s", exc)
             return LlmReplyResult(error=True)
         except Exception:
             logger.exception("Unexpected LLM error")
