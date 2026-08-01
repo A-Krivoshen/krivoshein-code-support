@@ -81,3 +81,40 @@ class LeadResponse(BaseModel):
     lead_id: int | None = None
     message: str
     handoff: HandoffLinks | None = None
+
+
+class BlogRagAskRequest(BaseModel):
+    message: str = Field(..., min_length=2, max_length=500)
+
+    @field_validator("message")
+    @classmethod
+    def strip_message(cls, v: str) -> str:
+        text = (v or "").strip()
+        if len(text) < 2:
+            raise ValueError("empty message")
+        return text
+
+
+class BlogRagSource(BaseModel):
+    title: str
+    url: str
+    date: str = ""
+    snippet: str = ""
+
+
+class BlogRagAskResponse(BaseModel):
+    answer: str
+    sources: list[BlogRagSource] = Field(default_factory=list)
+    provider: str = "none"
+    demo_note: str = ""
+    stats: dict = Field(default_factory=dict)
+
+
+class BlogRagStatusResponse(BaseModel):
+    ready: bool
+    posts: int = 0
+    chunks: int = 0
+    built_at: float = 0
+    built_age_sec: int | None = None
+    provider_preferred: str = "gigachat"
+    blog_api: str = ""

@@ -131,6 +131,23 @@ async def lifespan(application: FastAPI):
     application.state.web_store = web_store
     application.state.web_assistant = web_assistant
     application.state.knowledge = knowledge
+
+    # Blog RAG demo (GigaChat + blog knowledge base)
+    from app.web.blog_rag import BlogRagService
+
+    blog_rag = BlogRagService()
+    application.state.blog_rag = blog_rag
+    try:
+        # Prefer disk cache; full rebuild only if missing/stale (6h).
+        await blog_rag.ensure_index(max_age_sec=6 * 3600)
+        logger.info(
+            "Blog RAG ready posts=%s chunks=%s",
+            blog_rag.stats.get("posts"),
+            blog_rag.stats.get("chunks"),
+        )
+    except Exception:
+        logger.exception("Blog RAG initial index failed (will retry on first ask)")
+
     logger.info(
         "Web assistant enabled=%s cors=%s",
         settings.web_assistant_enabled,
@@ -139,6 +156,7 @@ async def lifespan(application: FastAPI):
 
     yield
 
+    await blog_rag.aclose()
     await web_assistant.aclose()
     await llm_service.aclose()
     await client.aclose()
@@ -160,10 +178,17 @@ def create_app() -> FastAPI:
     application.include_router(web_router)
 
     @application.get("/health")
-    async def health() -> dict[str, Any]:
+    async def health(request: Request) -> dict[str, Any]:
+        blog = getattr(request.app.state, "blog_rag", None)
+        blog_stats = blog.stats if blog is not None else {}
         return {
             "status": "ok",
             "web_assistant": settings.web_assistant_enabled,
+            "blog_rag": {
+                "ready": bool(blog_stats.get("ready")),
+                "posts": blog_stats.get("posts"),
+                "chunks": blog_stats.get("chunks"),
+            },
         }
 
     @application.post(settings.webhook_path)

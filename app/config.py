@@ -121,6 +121,15 @@ class Settings(BaseSettings):
         default=600.0,
         alias="WEB_KNOWLEDGE_TTL_SECONDS",
     )
+    # Blog RAG demo (public showcase) — keep tight
+    blog_rag_rate_limit_per_hour: int = Field(
+        default=12,
+        alias="BLOG_RAG_RATE_LIMIT_PER_HOUR",
+    )
+    blog_rag_rate_limit_per_day: int = Field(
+        default=30,
+        alias="BLOG_RAG_RATE_LIMIT_PER_DAY",
+    )
 
     model_config = {
         "env_file": ".env",

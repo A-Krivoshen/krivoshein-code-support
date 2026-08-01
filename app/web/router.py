@@ -12,6 +12,10 @@ from fastapi.responses import FileResponse
 from app.config import settings
 from app.web.knowledge import normalize_host
 from app.web.schemas import (
+    BlogRagAskRequest,
+    BlogRagAskResponse,
+    BlogRagSource,
+    BlogRagStatusResponse,
     BootstrapRequest,
     BootstrapResponse,
     ChatRequest,
@@ -183,3 +187,89 @@ async def widget_css() -> FileResponse:
         media_type="text/css; charset=utf-8",
         headers={"Cache-Control": "public, max-age=300"},
     )
+
+
+def _blog_rag(request: Request):
+    svc = getattr(request.app.state, "blog_rag", None)
+    if svc is None:
+        raise HTTPException(status_code=503, detail="Blog RAG unavailable")
+    return svc
+
+
+@router.get("/blog-rag-demo", response_class=FileResponse)
+async def blog_rag_demo_page() -> FileResponse:
+    """Public demo page: RAG over blog + GigaChat."""
+    path = STATIC_DIR / "blog-rag-demo.html"
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Demo page missing")
+    return FileResponse(
+        path,
+        media_type="text/html; charset=utf-8",
+        headers={"Cache-Control": "public, max-age=60"},
+    )
+
+
+@router.get("/api/v1/blog-rag/status", response_model=BlogRagStatusResponse)
+async def blog_rag_status(request: Request) -> BlogRagStatusResponse:
+    _check_origin(request)
+    rag = _blog_rag(request)
+    await rag.ensure_index()
+    st = rag.stats
+    return BlogRagStatusResponse(**st)
+
+
+@router.post("/api/v1/blog-rag/ask", response_model=BlogRagAskResponse)
+async def blog_rag_ask(body: BlogRagAskRequest, request: Request) -> BlogRagAskResponse:
+    """Demo RAG: retrieve blog chunks → answer (GigaChat preferred). Rate-limited."""
+    _check_origin(request)
+    rag = _blog_rag(request)
+    store = getattr(request.app.state, "web_store", None)
+    ip = _client_ip(request)
+    rate_key = f"ip:{ip}"
+
+    if store is not None:
+        hour_cap = max(1, int(settings.blog_rag_rate_limit_per_hour))
+        day_cap = max(hour_cap, int(settings.blog_rag_rate_limit_per_day))
+        if await store.is_rate_limited(
+            rate_key, kind="blog_rag", limit=hour_cap, window_hours=1.0
+        ):
+            logger.warning("Blog RAG rate hour ip=%s limit=%s", ip, hour_cap)
+            raise HTTPException(
+                status_code=429,
+                detail=(
+                    "Лимит демо: слишком много вопросов за час. "
+                    "Напишите в контакты — сделаем такую базу на вашем сайте."
+                ),
+            )
+        if await store.is_rate_limited(
+            rate_key, kind="blog_rag", limit=day_cap, window_hours=24.0
+        ):
+            logger.warning("Blog RAG rate day ip=%s limit=%s", ip, day_cap)
+            raise HTTPException(
+                status_code=429,
+                detail=(
+                    "Дневной лимит демо исчерпан. "
+                    "Закажите AI-ready / базу знаний: https://ai-ready.krivoshein.site/"
+                ),
+            )
+        await store.record_rate(rate_key, kind="blog_rag")
+
+    result = await rag.ask(body.message)
+    sources = [BlogRagSource(**s) for s in (result.get("sources") or [])]
+    return BlogRagAskResponse(
+        answer=str(result.get("answer") or ""),
+        sources=sources,
+        provider=str(result.get("provider") or "none"),
+        demo_note=str(result.get("demo_note") or ""),
+        stats=dict(result.get("stats") or {}),
+    )
+
+
+@router.post("/api/v1/blog-rag/reindex", response_model=BlogRagStatusResponse)
+async def blog_rag_reindex(request: Request) -> BlogRagStatusResponse:
+    """Rebuild index from WordPress REST (for demos / after many new posts)."""
+    _check_origin(request)
+    # Simple shared-secret optional: allow from trusted origins only (already _check_origin)
+    rag = _blog_rag(request)
+    st = await rag.reindex()
+    return BlogRagStatusResponse(**st)
