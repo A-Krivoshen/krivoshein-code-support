@@ -50,7 +50,7 @@
       urgencySoon: "Срочно",
       urgencyUrgent: "Очень срочно",
       topic: "Тема",
-      topicPh: "Боты / WordPress / …",
+      topicPh: "Боты / WordPress / Flask / …",
       submit: "Отправить",
       cancel: "Отмена",
       leadBtn: "Заявка",
@@ -64,7 +64,7 @@
       leadFail:
         "Не удалось отправить заявку. Напишите @DrSlon или через форму контактов.",
       greetHub:
-        "Здравствуйте! Я помощник Алексея Кривошеина (Dr.Slon): WordPress, VPS, боты, Директ, лендинги, AI-ready. Чем помочь?",
+        "Здравствуйте! Я помощник Алексея Кривошеина (Dr.Slon): WordPress, VPS, боты, Директ, лендинги, Flask, AI-ready. Чем помочь?",
       greetDefault:
         "Здравствуйте! Я помощник Алексея Кривошеина. Могу рассказать об услугах и помочь с заявкой.",
       tips: {
@@ -73,6 +73,7 @@
         wordpress: "Помочь с WordPress?",
         direct: "Вопросы по Директу?",
         landing: "Нужен лендинг?",
+        flask: "Нужен сайт на Flask?",
         "ai-ready": "Подготовить сайт к AI?",
         hub: "Нужна помощь?",
         general: "Нужна помощь?",
@@ -88,6 +89,8 @@
           "Здравствуйте! Консультации, аудит, настройка и ведение Яндекс.Директ. Аудит — от 10 000 ₽. Что интересует?",
         landing:
           "Здравствуйте! Лендинги под ключ: визитка от 25 000 ₽, с SEO и блоками — от 45 000 ₽. Расскажите задачу — подскажу формат.",
+        flask:
+          "Здравствуйте! Здесь — сайты на Flask (Python): страницы, форма заявок и серверная логика без CMS. Небольшой сайт — от 50 000 ₽. Кабинет, оплата и интеграции отдельно. Чем помочь?",
         "ai-ready":
           "Здравствуйте! Подготовка сайта к нейропоиску и AI-агентам: Start / Pro / Bot-ready. Без обещаний «топ-1» — только честная техника и контент.",
         hub: null,
@@ -99,8 +102,9 @@
         wordpress: ["Техподдержка", "Доработка сайта", "Оставить заявку", "Другие услуги"],
         direct: ["Аудит", "Ведение", "Оставить заявку", "Другие услуги"],
         landing: ["Сколько стоит лендинг?", "Сроки", "Оставить заявку", "Другие услуги"],
+        flask: ["Сколько стоит сайт на Flask?", "Что входит?", "Оставить заявку", "Другие услуги"],
         "ai-ready": ["Пакеты Start / Pro", "Bot-ready", "Оставить заявку", "Другие услуги"],
-        hub: ["Прайс / услуги", "WordPress", "Оставить заявку", "Контакты"],
+        hub: ["Прайс / услуги", "Сайт на Flask", "Оставить заявку", "Контакты"],
         general: ["Какие услуги?", "Оставить заявку", "Telegram", "Контакты"],
       },
       leaveLead: "Оставить заявку",
@@ -127,7 +131,7 @@
       urgencySoon: "Soon",
       urgencyUrgent: "Very urgent",
       topic: "Topic",
-      topicPh: "Bots / WordPress / …",
+      topicPh: "Bots / WordPress / Flask / …",
       submit: "Send",
       cancel: "Cancel",
       leadBtn: "Lead",
@@ -140,7 +144,7 @@
       leadFail:
         "Could not send the lead. Message @DrSlon or use the contacts form.",
       greetHub:
-        "Hi! I'm Alexey Krivoshein's assistant (Dr.Slon): WordPress, VPS, bots, Yandex Direct, landings, AI-ready. How can I help?",
+        "Hi! I'm Alexey Krivoshein's assistant (Dr.Slon): WordPress, VPS, bots, Yandex Direct, landings, Flask, AI-ready. How can I help?",
       greetDefault:
         "Hi! I'm Alexey Krivoshein's assistant. I can outline services and help you leave a lead.",
       tips: {
@@ -149,6 +153,7 @@
         wordpress: "Help with WordPress?",
         direct: "Questions about Yandex Direct?",
         landing: "Need a landing page?",
+        flask: "Need a Flask site?",
         "ai-ready": "Prepare a site for AI?",
         hub: "Need help?",
         general: "Need help?",
@@ -164,6 +169,8 @@
           "Hi! Yandex Direct consulting, audit, setup and management. Audit from 10,000 ₽. What are you looking for?",
         landing:
           "Hi! Turnkey landings: simple from 25,000 ₽, with SEO blocks from 45,000 ₽. Tell me the goal — I'll suggest a format.",
+        flask:
+          "Hi! Flask (Python) sites: pages, a lead form and server logic, no CMS. A small site from 50,000 ₽. A client account, payments and integrations are separate. How can I help?",
         "ai-ready":
           "Hi! Preparing sites for AI search and agents: Start / Pro / Bot-ready. No “#1 rank” promises — solid tech and content only.",
         hub: null,
@@ -175,8 +182,9 @@
         wordpress: ["Maintenance", "Site fixes", "Leave a lead", "Other services"],
         direct: ["Audit", "Management", "Leave a lead", "Other services"],
         landing: ["Landing price?", "Timeline", "Leave a lead", "Other services"],
+        flask: ["Flask site price?", "What's included?", "Leave a lead", "Other services"],
         "ai-ready": ["Start / Pro packs", "Bot-ready", "Leave a lead", "Other services"],
-        hub: ["Pricing / services", "WordPress", "Leave a lead", "Contacts"],
+        hub: ["Pricing / services", "Flask site", "Leave a lead", "Contacts"],
         general: ["What services?", "Leave a lead", "Telegram", "Contacts"],
       },
       leaveLead: "Leave a lead",
@@ -240,6 +248,7 @@
       "wordpress.krivoshein.site": "wordpress",
       "direct.krivoshein.site": "direct",
       "landing.krivoshein.site": "landing",
+      "flask.krivoshein.site": "flask",
       "ai-ready.krivoshein.site": "ai-ready",
       "krivoshein.site": "hub",
     };

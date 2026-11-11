@@ -84,6 +84,7 @@ class Settings(BaseSettings):
             "https://vps.krivoshein.site,"
             "https://direct.krivoshein.site,"
             "https://landing.krivoshein.site,"
+            "https://flask.krivoshein.site,"
             "https://ai-ready.krivoshein.site,"
             "https://krivoshein.site,"
             "https://www.krivoshein.site,"

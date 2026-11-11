@@ -52,20 +52,19 @@ if [[ ! "$NEW_VERSION" =~ ^[0-9A-Za-z._-]+$ ]]; then
   exit 1
 fi
 
-LANDINGS=(
-  ai-ready
-  bots
-  direct
-  landing
-  vps
-  wordpress
-)
+# Landings now live on the VPS. Override with KRV_LANDINGS if needed.
+# Flask template is not under /var/www/.../htdocs/.
+read -r -a LANDINGS <<< "${KRV_LANDINGS:-ai-ready bots direct landing vps wordpress}"
 
 FILES=()
 for site in "${LANDINGS[@]}"; do
   FILES+=("/var/www/${site}.krivoshein.site/htdocs/index.html")
 done
 FILES+=("/var/www/krivoshein.site/htdocs/wp-content/themes/drslon-blog-theme/inc/krv-assistant.php")
+FLASK_TMPL="/home/drslon/apps/flask-krivoshein/templates/index.html"
+if [[ -f "$FLASK_TMPL" ]]; then
+  FILES+=("$FLASK_TMPL")
+fi
 
 # Match only the assistant embed, not other ?v= cache-busts.
 PATTERN='krv-assistant\.js\?v=[^"'\''&[:space:]]*'

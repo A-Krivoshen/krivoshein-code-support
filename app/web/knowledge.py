@@ -96,18 +96,33 @@ SITE_PROFILES: dict[str, dict[str, object]] = {
             "Другие услуги",
         ],
     },
+    "flask.krivoshein.site": {
+        "key": "flask",
+        "label": "Сайты на Flask (Python)",
+        "greeting": (
+            "Здравствуйте! Здесь — сайты на Flask (Python): страницы, форма заявок "
+            "и серверная логика без CMS. Небольшой сайт — от 50 000 ₽. "
+            "Кабинет, оплата и интеграции считаются отдельно. Чем помочь?"
+        ),
+        "quick_replies": [
+            "Сколько стоит сайт на Flask?",
+            "Что входит?",
+            "Оставить заявку",
+            "Другие услуги",
+        ],
+    },
     "krivoshein.site": {
         "key": "hub",
         "label": "Услуги Dr.Slon",
         "greeting": (
             "Здравствуйте! Я помощник Алексея Кривошеина (Dr.Slon). "
-            "Могу коротко по WordPress, VPS, ботам, Директу, лендингам, AI-ready "
+            "Могу коротко по WordPress, VPS, ботам, Директу, лендингам, Flask, AI-ready "
             "и партнёрским сервисам (хостинг, облако, платежи) — "
             "или помочь с заявкой. Чем помочь?"
         ),
         "quick_replies": [
             "Прайс / услуги",
-            "Партнёры / хостинг",
+            "Сайт на Flask",
             "Оставить заявку",
             "Контакты",
         ],
@@ -229,7 +244,20 @@ class KnowledgeLoader:
     def site_llms_path(self, host: str) -> Path:
         host = normalize_host(host)
         # WordOps layout: /var/www/<host>/htdocs/llms.txt
-        return self.sites_root / host / "htdocs" / "llms.txt"
+        primary = self.sites_root / host / "htdocs" / "llms.txt"
+        if primary.is_file():
+            return primary
+        # Flask (and similar app landings) may live outside WordOps htdocs.
+        fallbacks = {
+            "flask.krivoshein.site": Path(
+                "/home/drslon/apps/flask-krivoshein/public/llms.txt"
+            ),
+        }
+        alt = fallbacks.get(host)
+        if alt is not None and alt.is_file():
+            return alt
+        loose = self.sites_root / host / "llms.txt"
+        return loose if loose.is_file() else primary
 
     def get(self, host: str | None) -> KnowledgeBundle:
         host_n = normalize_host(host) or "krivoshein.site"

@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Демо: RAG по блогу (GigaChat) — Dr.Slon</title>
   <meta name="robots" content="noindex,follow" />
+  <script>
+    (function () {
+      var p = new URLSearchParams(location.search);
+      if (p.get("embed") === "1") {
+        document.documentElement.classList.add("is-embed");
+        document.documentElement.setAttribute("data-theme", p.get("theme") === "dark" ? "dark" : "light");
+      }
+    })();
+  </script>
   <style>
     :root {
       --bg: #0f1419;
@@ -15,17 +24,59 @@
       --accent: #3d7eff;
       --accent2: #22c55e;
       --warn: #f59e0b;
+      --chip: #243041;
+      --field: #121820;
+      --btn: #3d7eff;
     }
     * { box-sizing: border-box; }
+    html, body { margin: 0; }
     body {
-      margin: 0;
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       background: radial-gradient(1200px 600px at 10% -10%, #1a2a44 0%, var(--bg) 55%);
       color: var(--text);
       min-height: 100vh;
-      line-height: 1.5;
+      line-height: 1.55;
     }
     .wrap { max-width: 880px; margin: 0 auto; padding: 24px 16px 48px; }
+    /* Embedded on krivoshein.site: no second page, no inner scrollbar. */
+    html.is-embed, html.is-embed body {
+      min-height: 0;
+      height: auto;
+      overflow: hidden;
+      background: #f7f9fc;
+    }
+    html.is-embed .wrap { max-width: none; margin: 0; padding: 0 0 8px; }
+    html.is-embed .hero, html.is-embed .pipeline, html.is-embed .foot { display: none; }
+    html.is-embed[data-theme="light"] {
+      --bg: transparent;
+      --card: #ffffff;
+      --line: #d8e0ee;
+      --text: #172133;
+      --muted: #52627d;
+      --accent: #315fe8;
+      --accent2: #15803d;
+      --warn: #b45309;
+      --chip: #eef3fb;
+      --field: #ffffff;
+      --btn: #315fe8;
+    }
+    html.is-embed[data-theme="dark"] {
+      --bg: #0b1220;
+      --card: #121a2b;
+      --line: #243049;
+      --text: #e8eefc;
+      --muted: #a8b6d4;
+      --accent: #8aacff;
+      --accent2: #4ade80;
+      --warn: #fdba74;
+      --chip: #1a2744;
+      --field: #0b1220;
+      --btn: #315fe8;
+    }
+    html.is-embed[data-theme="dark"],
+    html.is-embed[data-theme="dark"] body {
+      background: #0b1220;
+    }
     h1 { font-size: 1.55rem; margin: 0 0 8px; letter-spacing: -0.02em; }
     .lead { color: var(--muted); margin: 0 0 20px; max-width: 62ch; }
     .pipeline {
@@ -65,34 +116,42 @@
     }
     .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
     .chips button {
-      background: #243041;
+      background: var(--chip);
       border: 1px solid var(--line);
       color: var(--text);
       border-radius: 999px;
       padding: 8px 12px;
       font-size: 0.85rem;
       cursor: pointer;
+      font-family: inherit;
     }
     .chips button:hover { border-color: var(--accent); }
-    .row { display: flex; gap: 8px; }
+    .row { display: flex; gap: 8px; align-items: stretch; }
     .row input {
       flex: 1;
-      background: #121820;
+      min-width: 0;
+      background: var(--field);
       border: 1px solid var(--line);
       border-radius: 12px;
       color: var(--text);
       padding: 12px 14px;
       font-size: 1rem;
+      font-family: inherit;
     }
     .row button.primary {
-      background: var(--accent);
+      background: var(--btn);
       border: 0;
       color: #fff;
       border-radius: 12px;
       padding: 0 18px;
+      min-height: 46px;
       font-weight: 600;
       cursor: pointer;
       white-space: nowrap;
+      font-family: inherit;
+    }
+    @media (max-width: 640px) {
+      .row { flex-direction: column; }
     }
     .row button.primary:disabled { opacity: 0.5; cursor: wait; }
     .answer {
@@ -117,12 +176,14 @@
 </head>
 <body>
   <div class="wrap">
+    <div class="hero">
     <h1>Демо: RAG по блогу + GigaChat</h1>
     <p class="lead">
       Живой пример для клиентов AI-ready: вопросы отвечаются <strong>только по статьям блога</strong>
       krivoshein.site. Сначала поиск релевантных кусков (retrieval), затем ответ модели
       <strong>GigaChat</strong> с ссылками на источники.
     </p>
+    </div>
 
     <div class="pipeline">
       <div class="step"><b>1. Индекс</b>Посты WP → текст → чанки</div>
@@ -162,13 +223,40 @@
       embeddings, ACL, rate-limit.
       API: <code>POST /api/v1/blog-rag/ask</code> ·
       <a href="https://krivoshein.site/">krivoshein.site</a> ·
-      <a href="https://krivoshein.site/rag-demo/ (канон) · https://ai-ready.krivoshein.site/">AI-ready</a>
+      <a href="https://krivoshein.site/rag-demo/">страница демо</a> ·
+      <a href="https://ai-ready.krivoshein.site/">AI-ready</a>
     </p>
   </div>
 
   <script>
     const $ = (id) => document.getElementById(id);
     const API = ""; // same origin (support.krivoshein.site)
+    const params = new URLSearchParams(location.search);
+    const embed = params.get("embed") === "1";
+    if (embed) {
+      document.documentElement.classList.add("is-embed");
+      document.documentElement.setAttribute("data-theme", params.get("theme") === "dark" ? "dark" : "light");
+    }
+
+    function reportHeight() {
+      if (!embed || window.parent === window) return;
+      var wrap = document.querySelector(".wrap");
+      var h = wrap ? Math.ceil(wrap.getBoundingClientRect().height) : 0;
+      if (h < 1) return;
+      window.parent.postMessage({ type: "krv-rag-height", height: h }, "https://krivoshein.site");
+    }
+
+    function applyTheme(theme) {
+      if (!embed) return;
+      document.documentElement.setAttribute("data-theme", theme === "dark" ? "dark" : "light");
+      requestAnimationFrame(reportHeight);
+    }
+
+    window.addEventListener("message", function (e) {
+      if (e.origin !== "https://krivoshein.site") return;
+      var d = e.data || {};
+      if (d.type === "krv-rag-theme") applyTheme(d.theme);
+    });
 
     async function loadStatus() {
       try {
@@ -192,11 +280,9 @@
       if (!q) return;
       $("q").value = q;
       $("ask").disabled = true;
-      $("out").hidden = false;
-      $("answer").textContent = "Думаю… (retrieval + GigaChat)";
-      $("meta").textContent = "";
-      $("srcPanel").hidden = true;
-      $("sources").innerHTML = "";
+      $("ask").textContent = "Думаю…";
+      var wrap = document.querySelector(".wrap");
+      if (wrap) wrap.style.minHeight = Math.ceil(wrap.getBoundingClientRect().height) + "px";
       try {
         const r = await fetch(API + "/api/v1/blog-rag/ask", {
           method: "POST",
@@ -205,6 +291,7 @@
         });
         const j = await r.json();
         if (!r.ok) throw new Error(j.detail || r.statusText);
+        $("out").hidden = false;
         $("answer").textContent = j.answer || "—";
         const prov = j.provider || "—";
         const hits = j.stats?.hits ?? (j.sources || []).length;
@@ -226,9 +313,14 @@
             .join("");
         }
       } catch (e) {
+        $("out").hidden = false;
         $("answer").textContent = "Ошибка: " + (e.message || e);
       } finally {
         $("ask").disabled = false;
+        $("ask").textContent = "Спросить";
+        var wrap = document.querySelector(".wrap");
+        if (wrap) wrap.style.minHeight = "";
+        requestAnimationFrame(reportHeight);
       }
     }
 
@@ -249,7 +341,13 @@
       if (b) ask(b.getAttribute("data-q"));
     });
 
-    loadStatus();
+    loadStatus().finally(function () {
+      requestAnimationFrame(reportHeight);
+    });
+    if (embed && window.ResizeObserver) {
+      new ResizeObserver(function () { reportHeight(); }).observe(document.querySelector(".wrap"));
+    }
+    window.addEventListener("load", reportHeight);
   </script>
 </body>
 </html>

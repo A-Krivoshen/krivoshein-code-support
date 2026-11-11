@@ -336,6 +336,7 @@ class BlogRagService:
         """Index public llms.txt (already has structured prices)."""
         urls = (
             "https://krivoshein.site/llms.txt",
+            "https://flask.krivoshein.site/llms.txt",
             "https://ai-ready.krivoshein.site/llms.txt",
         )
         for i, url in enumerate(urls):
@@ -350,14 +351,15 @@ class BlogRagService:
                 continue
             pid = -10 - i  # synthetic ids
             post_ids.add(pid)
-            title = (
-                "Прайс и факты сайта (llms.txt)"
-                if "krivoshein.site/llms" in url
-                else "AI-ready: цены и пакеты (llms.txt)"
-            )
+            if "flask.krivoshein.site" in url:
+                title = "Сайты на Flask (Python): цены (llms.txt)"
+            elif "ai-ready.krivoshein.site" in url:
+                title = "AI-ready: цены и пакеты (llms.txt)"
+            else:
+                title = "Прайс и факты сайта (llms.txt)"
             boost = (
                 "\nпрайс цены стоимость тарифы сколько стоит "
-                "руб ₽ rate hour диагностика vps директ бот ai-ready"
+                "руб ₽ rate hour диагностика vps директ бот flask python ai-ready"
             )
             for piece in self._chunk_text(text, max_chars=1400):
                 chunks.append(

@@ -8,6 +8,7 @@ Backend — расширение **krivoshein-code-support** (тот же uvicor
 - Bubble + popup (vanilla JS/CSS)
 - Контекст `hostname` + `pathname`
 - Knowledge из локальных `llms.txt` (хаб + текущий лендинг)
+- Профиль и прайс Flask: https://flask.krivoshein.site (от 50 000 ₽)
 - Chat через Groq (`LLM_*` как у MAX-бота)
 - Заявка → SQLite + уведомление в **MAX admin channel**
 - Handoff: Telegram @DrSlon, MAX, contacts, прайс

@@ -66,21 +66,24 @@ class LlmClient:
     async def chat(self, messages: list[dict[str, Any]], **kwargs: Any) -> str:
         """Try Groq first; on failure fall back to GigaChat when enabled."""
         primary_error: LlmError | None = None
-        try:
-            text = await self._chat_groq(messages, **kwargs)
-            self.last_provider = "groq"
-            logger.info(
-                "LLM answered provider=groq model=%s",
-                kwargs.get("model", self._settings.llm_model),
-            )
-            return text
-        except LlmError as exc:
-            primary_error = exc
-            logger.warning(
-                "LLM primary failed provider=groq status=%s error=%s",
-                getattr(exc, "status_code", None),
-                exc,
-            )
+        if (self._settings.llm_api_key or "").strip():
+            try:
+                text = await self._chat_groq(messages, **kwargs)
+                self.last_provider = "groq"
+                logger.info(
+                    "LLM answered provider=groq model=%s",
+                    kwargs.get("model", self._settings.llm_model),
+                )
+                return text
+            except LlmError as exc:
+                primary_error = exc
+                logger.warning(
+                    "LLM primary failed provider=groq status=%s error=%s",
+                    getattr(exc, "status_code", None),
+                    exc,
+                )
+        else:
+            primary_error = LlmRequestError("LLM_API_KEY is not configured")
 
         if self._can_use_gigachat():
             try:

@@ -35,6 +35,8 @@ VPS (vps.krivoshein.site): настройка VPS под ключ — от 10 00
 
 Лендинги (landing.krivoshein.site): базовый — от 25 000 ₽; полный — от 45 000 ₽
 
+Сайты на Flask / Python (flask.krivoshein.site): небольшой сайт — от 50 000 ₽ (страницы, форма заявок, серверная логика, без CMS; кабинет/оплата/интеграции отдельно)
+
 AI-ready (ai-ready.krivoshein.site): Start — от 10 000 ₽; Pro — от 20 000 ₽; Bot-ready — от 30 000 ₽
 
 Также: тех. SEO, Linux, консультации, диагностика, проекты krivoshein.site / drslon.ru.

@@ -239,7 +239,7 @@ class WebAssistantService:
         )
 
         reply_text: str | None = None
-        if self._settings.llm_enabled and self._settings.llm_api_key:
+        if self._settings.llm_enabled and ((self._settings.llm_api_key or "").strip() or self._settings.gigachat_enabled):
             messages = [{"role": "system", "content": system_prompt}]
             for item in history:
                 if item.get("role") in {"user", "assistant"} and item.get("content"):
@@ -364,7 +364,7 @@ class WebAssistantService:
             ) or compact in {"who", "who you"}:
                 return (
                     "I'm the on-site assistant for Alexey Krivoshein (Dr.Slon): "
-                    "WordPress, VPS, bots, Yandex Direct, landings, AI-ready. "
+                    "WordPress, VPS, bots, Yandex Direct, landings, Flask, AI-ready. "
                     "What do you need help with?"
                 )
             if re.search(
@@ -400,11 +400,11 @@ class WebAssistantService:
             ):
                 return (
                     "Dr.Slon services (from-prices): WordPress, VPS, MAX/Telegram bots, "
-                    "Yandex Direct, landings, AI-ready. Full list: "
+                    "Yandex Direct, landings, Flask, AI-ready. Full list: "
                     "https://krivoshein.site/prays-list/ — which one?"
                 )
             return (
-                "Tell me the task in a sentence (WordPress, VPS, bot, Direct, landing…) — "
+                "Tell me the task in a sentence (WordPress, VPS, bot, Direct, landing, Flask…) — "
                 "I'll outline format and “from” pricing. Or write @DrSlon."
             )
 
@@ -415,7 +415,7 @@ class WebAssistantService:
         ):
             return (
                 "Я помощник Алексея Кривошеина (Dr.Slon) на сайте: "
-                "WordPress, VPS, боты MAX/Telegram, Директ, лендинги, AI-ready. "
+                "WordPress, VPS, боты MAX/Telegram, Директ, лендинги, Flask, AI-ready. "
                 "Кратко сориентирую по формату и цене «от» или помогу с заявкой. О чём вопрос?"
             )
 
@@ -458,7 +458,7 @@ class WebAssistantService:
         if re.search(r"как\s+дела|что\s+умеешь|чем\s+можешь|что\s+можешь", compact):
             return (
                 "На связи. Умею: сориентировать по услугам Dr.Slon (WordPress, VPS, боты, "
-                "Директ, лендинги, AI-ready), подсказать ориентир «от» и помочь с заявкой. "
+                "Директ, лендинги, Flask, AI-ready), подсказать ориентир «от» и помочь с заявкой. "
                 "Что нужно?"
             )
 
@@ -503,18 +503,34 @@ class WebAssistantService:
                 "• Боты MAX/Telegram — от 40 000 ₽\n"
                 "• Яндекс.Директ — аудит от 10 000 ₽, ведение от 25 000 ₽/мес\n"
                 "• Лендинги — от 25 000 ₽\n"
+                "• Сайты на Flask (Python) — от 50 000 ₽\n"
                 "• AI-ready — Start от 10 000 ₽ / Pro от 20 000 ₽ / Bot-ready от 30 000 ₽\n"
                 "Прайс: https://krivoshein.site/prays-list/ · что именно интересует?"
             )
 
         # Default: short, no repeated service paragraph
         return (
-            "Напишите, что нужно, одной фразой — WordPress, VPS, бот, Директ, лендинг "
-            "или AI-ready. Подскажу формат и ориентир «от». Или Telegram @DrSlon."
+            "Напишите, что нужно, одной фразой — WordPress, VPS, бот, Директ, лендинг, "
+            "Flask или AI-ready. Подскажу формат и ориентир «от». Или Telegram @DrSlon."
         )
 
     def _detect_service_key(self, low: str) -> str | None:
         """Map free text to a service bucket (order matters: more specific first)."""
+        low = (low or "").lower()
+        # Flask / Python sites — before landing/WordPress so "лендинг на Flask" stays Flask.
+        if any(
+            w in low
+            for w in (
+                "flask",
+                "фласк",
+                "на python",
+                "на пайтон",
+            )
+        ) or (
+            re.search(r"\bpython\b", low)
+            and any(w in low for w in ("сайт", "site", "сервис", "приложен"))
+        ):
+            return "flask"
         # Yandex Direct / ads
         if any(
             w in low
@@ -634,6 +650,12 @@ class WebAssistantService:
                 "с CRM/таблицами от 70 000 ₽, сопровождение от 5 000 ₽/мес. "
                 "https://bots.krivoshein.site/ · прайс: https://krivoshein.site/prays-list/"
             ),
+            "flask": (
+                "Сайты на Flask (Python): небольшой сайт — страницы, форма заявок "
+                "и серверная логика — от 50 000 ₽. Без CMS. Кабинет, оплата и интеграции "
+                "считаются отдельно. "
+                "https://flask.krivoshein.site/ · прайс: https://krivoshein.site/prays-list/"
+            ),
             "ai-ready": (
                 "AI-ready (нейропоиск / агенты): Start от 10 000 ₽, Pro от 20 000 ₽, "
                 "Bot-ready от 30 000 ₽. Без обещаний «топ-1» — техника и контент. "
@@ -653,8 +675,15 @@ class WebAssistantService:
             return texts[key]
         # price question without clear service
         return (
-            "Ориентиры «от» по всем услугам (WordPress, VPS, боты, Директ, лендинги, "
-            "AI-ready) — https://krivoshein.site/prays-list/. "
+            "Ориентиры «от» по всем услугам:\n"
+            "• WordPress — поддержка от 20 000 ₽/мес, доработки от 5 000 ₽, корп. сайт от 90 000 ₽\n"
+            "• VPS — настройка от 10 000 ₽\n"
+            "• Боты MAX/Telegram — от 40 000 ₽\n"
+            "• Яндекс.Директ — аудит от 10 000 ₽, ведение от 25 000 ₽/мес\n"
+            "• Лендинги — от 25 000 ₽\n"
+            "• Сайты на Flask (Python) — от 50 000 ₽ · https://flask.krivoshein.site/\n"
+            "• AI-ready — Start от 10 000 ₽ / Pro от 20 000 ₽ / Bot-ready от 30 000 ₽\n"
+            "Полный прайс: https://krivoshein.site/prays-list/. "
             f"Можно уточнить направление (сейчас контекст: «{label}») — отвечу конкретнее."
         )
 
@@ -685,6 +714,11 @@ class WebAssistantService:
                 "MAX/Telegram bots: simple lead bot from 40,000 ₽, "
                 "CRM/integrations from 70,000 ₽. "
                 "https://bots.krivoshein.site/ · https://krivoshein.site/prays-list/"
+            ),
+            "flask": (
+                "Flask (Python) sites: a small site — pages, a lead form and server logic — "
+                "from 50,000 ₽. No CMS. A client account, payments and integrations are separate. "
+                "https://flask.krivoshein.site/ · https://krivoshein.site/prays-list/"
             ),
             "ai-ready": (
                 "AI-ready: Start from 10,000 ₽, Pro from 20,000 ₽, Bot-ready from 30,000 ₽. "
